@@ -30,6 +30,10 @@ fn test_int_arithmetic() {
         make_testcase("5 * 2 + 10", Object::Integer(20)),
         make_testcase("5 + 2 * 10", Object::Integer(25)),
         make_testcase("5 * (2 + 10)", Object::Integer(60)),
+        make_testcase("-5", Object::Integer(-5)),
+        make_testcase("-10", Object::Integer(-10)),
+        make_testcase("-50 + 100 + -50", Object::Integer(0)),
+        make_testcase("(5 + 10 * 2 + 15 / 3) * 2 + -10", Object::Integer(50)),
     ];
 
     run_tests(tests)
@@ -56,6 +60,12 @@ fn test_bool_expr() {
         make_testcase("(1 < 2) == false", Object::Boolean(false)),
         make_testcase("(1 > 2) == true", Object::Boolean(false)),
         make_testcase("(1 > 2) == false", Object::Boolean(true)),
+        make_testcase("!true", Object::Boolean(false)),
+        make_testcase("!false", Object::Boolean(true)),
+        make_testcase("!5", Object::Boolean(false)),
+        make_testcase("!!true", Object::Boolean(true)),
+        make_testcase("!!false", Object::Boolean(false)),
+        make_testcase("!!5", Object::Boolean(true)),
     ];
 
     run_tests(tests);

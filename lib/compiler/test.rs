@@ -64,6 +64,15 @@ fn test_int_arithmetic() {
                 make(Opcode::OpPop, None),
             ],
         },
+        TestCase {
+            input: "-1".to_string(),
+            expected_constants: vec![],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpMinus, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
     ];
 
     run_tests(tests)
@@ -139,6 +148,15 @@ fn test_bool_expr() {
                 make(Opcode::OpTrue, None),
                 make(Opcode::OpFalse, None),
                 make(Opcode::OpNotEqual, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "!true".to_string(),
+            expected_constants: vec![],
+            expected_instructions: vec![
+                make(Opcode::OpTrue, None),
+                make(Opcode::OpBang, None),
                 make(Opcode::OpPop, None),
             ],
         },

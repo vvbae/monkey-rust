@@ -58,6 +58,12 @@ impl VM {
                 Opcode::OpEqual | Opcode::OpNotEqual | Opcode::OpGreaterThan => {
                     self.execute_comparison(op)?;
                 }
+                Opcode::OpMinus => {
+                    self.execute_minus_operator()?;
+                }
+                Opcode::OpBang => {
+                    self.execute_bang_operator()?;
+                }
             }
 
             ip += 1
@@ -131,6 +137,31 @@ impl VM {
             Opcode::OpNotEqual => self.push(native_to_object(right_val != left_val)),
             Opcode::OpGreaterThan => self.push(native_to_object(left_val > right_val)),
             _ => unimplemented!("Unknown operator found: {:?} ({:?} {:?})", op, left, right),
+        }?;
+
+        Ok(())
+    }
+
+    fn execute_bang_operator(&self) -> Result<()> {
+        let operand = self.pop()?;
+
+        match operand {
+            Object::Boolean(v) => match v {
+                true => self.push(FALSE),
+                false => self.push(TRUE),
+            },
+            _ => self.push(FALSE),
+        }?;
+
+        Ok(())
+    }
+
+    fn execute_minus_operator(&self) -> Result<()> {
+        let operand = self.pop()?;
+
+        match operand {
+            Object::Integer(v) => self.push(Object::Integer(-v)),
+            _ => Err(MonkeyError::UnsupportedType(operand)),
         }?;
 
         Ok(())

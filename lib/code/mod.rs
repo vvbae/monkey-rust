@@ -98,6 +98,8 @@ pub enum Opcode {
     OpEqual,
     OpNotEqual,
     OpGreaterThan,
+    OpMinus,
+    OpBang,
 }
 
 impl Opcode {
@@ -115,6 +117,8 @@ impl Opcode {
             Opcode::OpEqual => vec![],
             Opcode::OpNotEqual => vec![],
             Opcode::OpGreaterThan => vec![],
+            Opcode::OpMinus => vec![],
+            Opcode::OpBang => vec![],
         }
     }
 
@@ -132,6 +136,8 @@ impl Opcode {
             Opcode::OpEqual => 8,
             Opcode::OpNotEqual => 9,
             Opcode::OpGreaterThan => 10,
+            Opcode::OpMinus => 11,
+            Opcode::OpBang => 12,
         }
     }
 }
@@ -150,6 +156,8 @@ impl From<&u8> for Opcode {
             8 => Opcode::OpEqual,
             9 => Opcode::OpNotEqual,
             10 => Opcode::OpGreaterThan,
+            11 => Opcode::OpMinus,
+            12 => Opcode::OpBang,
             _ => todo!(),
         }
     }
@@ -169,6 +177,8 @@ impl Into<String> for Opcode {
             Opcode::OpEqual => "OpEqual",
             Opcode::OpNotEqual => "OpNotEqual",
             Opcode::OpGreaterThan => "OpGreaterThan",
+            Opcode::OpMinus => "OpMinus",
+            Opcode::OpBang => "OpBang",
         }
         .to_string()
     }

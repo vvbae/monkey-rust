@@ -84,8 +84,14 @@ impl Compiler {
         };
     }
 
-    pub fn compile_prefix(&self, pre: &Prefix, expr: Expr) {
-        todo!()
+    pub fn compile_prefix(&mut self, pre: &Prefix, expr: Expr) {
+        self.compile_expr(expr);
+
+        match pre {
+            Prefix::Not => self.emit(Opcode::OpBang, None),
+            Prefix::PrefixPlus => todo!(),
+            Prefix::PrefixMinus => self.emit(Opcode::OpMinus, None),
+        };
     }
 
     pub fn compile_infix(&mut self, infix: &Infix, expr1: Expr, expr2: Expr) {
