@@ -101,11 +101,9 @@ impl Opcode {
 
     /// Represent opcode as u8
     fn to_byte(op: Opcode) -> u8 {
-        let b = match op {
+        match op {
             Opcode::OpConstant => 1,
-        };
-
-        b
+        }
     }
 }
 
@@ -120,11 +118,10 @@ impl From<&u8> for Opcode {
 
 impl Into<String> for Opcode {
     fn into(self) -> String {
-        let ret = match self {
+        match self {
             Opcode::OpConstant => "OpConstant",
-        };
-
-        ret.to_string()
+        }
+        .to_string()
     }
 }
 
