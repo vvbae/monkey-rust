@@ -205,6 +205,46 @@ fn test_conditionals() {
     run_tests(tests);
 }
 
+#[test]
+fn test_global_let_stmts() {
+    let tests = vec![
+        TestCase {
+            input: "let one = 1; let two = 2;".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpSetGlobal, Some(vec![1])),
+            ],
+        },
+        TestCase {
+            input: "let one = 1; one;".to_string(),
+            expected_constants: vec![Object::Integer(1)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![0])),
+                make(Opcode::OpGetGlobal, Some(vec![0])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "let one = 1; let two = one; two;".to_string(),
+            expected_constants: vec![],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![0])),
+                make(Opcode::OpGetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![1])),
+                make(Opcode::OpGetGlobal, Some(vec![1])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+    ];
+
+    run_tests(tests);
+}
+
 fn test_int_object(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => assert_eq!(expected, v),

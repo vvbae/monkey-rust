@@ -103,6 +103,8 @@ pub enum Opcode {
     OpJumpNotTruthy,
     OpJump,
     OpNull,
+    OpGetGlobal,
+    OpSetGlobal,
 }
 
 impl Opcode {
@@ -125,6 +127,8 @@ impl Opcode {
             Opcode::OpJumpNotTruthy => vec![2],
             Opcode::OpJump => vec![2],
             Opcode::OpNull => vec![],
+            Opcode::OpGetGlobal => vec![2],
+            Opcode::OpSetGlobal => vec![2],
         }
     }
 
@@ -147,6 +151,8 @@ impl Opcode {
             Opcode::OpJumpNotTruthy => 13,
             Opcode::OpJump => 14,
             Opcode::OpNull => 15,
+            Opcode::OpGetGlobal => 16,
+            Opcode::OpSetGlobal => 17,
         }
     }
 }
@@ -170,6 +176,8 @@ impl From<&u8> for Opcode {
             13 => Opcode::OpJumpNotTruthy,
             14 => Opcode::OpJump,
             15 => Opcode::OpNull,
+            16 => Opcode::OpGetGlobal,
+            17 => Opcode::OpSetGlobal,
             _ => todo!(),
         }
     }
@@ -194,6 +202,8 @@ impl Into<String> for Opcode {
             Opcode::OpJumpNotTruthy => "OpJumpNotTruthy",
             Opcode::OpJump => "OpJump",
             Opcode::OpNull => "OpNull",
+            Opcode::OpGetGlobal => "OpGetGlobal",
+            Opcode::OpSetGlobal => "OpSetGlobal",
         }
         .to_string()
     }

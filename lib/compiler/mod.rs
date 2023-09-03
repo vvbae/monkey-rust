@@ -4,12 +4,16 @@ use crate::{
     parser::ast::{Expr, Ident, Infix, Literal, Prefix, Program, Stmt},
 };
 
+use self::symbol_table::SymbolTable;
+
 pub struct Compiler {
     instructions: Instructions,
     constants: Vec<Object>,
 
     last_ins: Option<EmittedInstruction>,
     prev_ins: Option<EmittedInstruction>,
+
+    symbol_table: SymbolTable,
 }
 
 impl Compiler {
@@ -19,6 +23,7 @@ impl Compiler {
             constants: Vec::new(),
             last_ins: None,
             prev_ins: None,
+            symbol_table: SymbolTable::new(),
         }
     }
 
@@ -35,8 +40,9 @@ impl Compiler {
                 self.emit(Opcode::OpPop, None);
             }
             Stmt::LetStmt(ident, expr) => {
-                // some thing with ident
-                self.compile_expr(expr)
+                self.compile_expr(expr);
+                let symbol = self.symbol_table.define(ident.0);
+                self.emit(Opcode::OpSetGlobal, Some(vec![symbol.index]));
             }
             Stmt::ReturnStmt(expr) => self.compile_expr(expr),
         };
@@ -64,8 +70,9 @@ impl Compiler {
         };
     }
 
-    pub fn compile_ident(&self, ident: Ident) {
-        todo!()
+    pub fn compile_ident(&mut self, ident: Ident) {
+        let symbol = self.symbol_table.resolve(ident.0).unwrap();
+        self.emit(Opcode::OpGetGlobal, Some(vec![symbol.index]));
     }
 
     pub fn compile_literal(&mut self, lit: Literal) {
@@ -266,5 +273,6 @@ impl EmittedInstruction {
     }
 }
 
+pub mod symbol_table;
 #[cfg(test)]
 mod test;
