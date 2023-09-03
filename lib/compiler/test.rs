@@ -69,6 +69,24 @@ fn test_int_arithmetic() {
     run_tests(tests)
 }
 
+#[test]
+fn test_bool_expr() {
+    let tests = vec![
+        TestCase {
+            input: "true".to_string(),
+            expected_constants: vec![],
+            expected_instructions: vec![make(Opcode::OpTrue, None), make(Opcode::OpPop, None)],
+        },
+        TestCase {
+            input: "false".to_string(),
+            expected_constants: vec![],
+            expected_instructions: vec![make(Opcode::OpFalse, None), make(Opcode::OpPop, None)],
+        },
+    ];
+
+    run_tests(tests)
+}
+
 fn test_int_object(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => assert_eq!(expected, v),
@@ -103,7 +121,7 @@ fn run_tests(tests: Vec<TestCase>) {
     for test in tests {
         let program = parse(test.input);
         let mut compiler = Compiler::new();
-        let res = compiler.compile(program);
+        compiler.compile(program);
 
         let bytecode = compiler.bytecode();
 

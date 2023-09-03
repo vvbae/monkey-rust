@@ -35,10 +35,35 @@ fn test_int_arithmetic() {
     run_tests(tests)
 }
 
+#[test]
+fn test_bool_expr() {
+    let tests = vec![
+        make_testcase("true", Object::Boolean(true)),
+        make_testcase("false", Object::Boolean(false)),
+    ];
+
+    run_tests(tests);
+}
+
 fn test_int_obj(expected: i64, actual: Object) {
     match actual {
-        Object::Integer(v) => assert_eq!(expected, v),
+        Object::Integer(v) => assert_eq!(
+            expected, v,
+            "object has wrong value. got={:?}, want={:?}",
+            v, expected
+        ),
         _ => panic!("object is not Integer. got={:?}", actual),
+    }
+}
+
+fn test_bool_obj(expected: bool, actual: Object) {
+    match actual {
+        Object::Boolean(v) => assert_eq!(
+            expected, v,
+            "object has wrong value. got={:?}, want={:?}",
+            v, expected
+        ),
+        _ => panic!("object is not Boolean. got={:?}", actual),
     }
 }
 
@@ -62,6 +87,7 @@ fn run_tests(tests: Vec<TestCase>) {
 fn test_expected(expected: Object, actual: &Object) {
     match expected {
         Object::Integer(v) => test_int_obj(v, actual.clone()),
+        Object::Boolean(v) => test_bool_obj(v, actual.clone()),
         _ => todo!(),
     }
 }

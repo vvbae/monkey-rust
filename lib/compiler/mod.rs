@@ -64,13 +64,24 @@ impl Compiler {
     }
 
     pub fn compile_literal(&mut self, lit: Literal) {
-        let lit = match lit {
-            Literal::IntLiteral(v) => Object::Integer(v),
-            Literal::BoolLiteral(v) => Object::Boolean(v),
-            Literal::StringLiteral(v) => Object::String(v),
+        match lit {
+            Literal::IntLiteral(v) => {
+                let lit = Object::Integer(v);
+                let const_index = self.register_constant(&lit) as u16;
+                self.emit(Opcode::OpConstant, Some(vec![const_index]));
+            }
+            Literal::BoolLiteral(v) => {
+                match v {
+                    true => self.emit(Opcode::OpTrue, None),
+                    false => self.emit(Opcode::OpFalse, None),
+                };
+            }
+            Literal::StringLiteral(v) => {
+                let lit = Object::String(v);
+                let const_index = self.register_constant(&lit) as u16;
+                self.emit(Opcode::OpConstant, Some(vec![const_index]));
+            }
         };
-        let const_index = self.register_constant(&lit) as u16;
-        self.emit(Opcode::OpConstant, Some(vec![const_index]));
     }
 
     pub fn compile_prefix(&self, pre: &Prefix, expr: Expr) {

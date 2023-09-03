@@ -1,6 +1,6 @@
 use byteorder::{BigEndian, ByteOrder};
 
-use crate::error::{MonkeyError, Result};
+use crate::error::Result;
 
 pub type Instructions = Vec<u8>;
 
@@ -95,6 +95,8 @@ pub enum Opcode {
     OpSub,
     OpMul,
     OpDiv,
+    OpTrue,
+    OpFalse,
 }
 
 impl Opcode {
@@ -107,7 +109,8 @@ impl Opcode {
             Opcode::OpSub => Ok(vec![]),
             Opcode::OpMul => Ok(vec![]),
             Opcode::OpDiv => Ok(vec![]),
-            _ => Err(MonkeyError::OpcodeNotFound(self)),
+            Opcode::OpTrue => Ok(vec![]),
+            Opcode::OpFalse => Ok(vec![]),
         }
     }
 
@@ -120,6 +123,8 @@ impl Opcode {
             Opcode::OpSub => 3,
             Opcode::OpMul => 4,
             Opcode::OpDiv => 5,
+            Opcode::OpTrue => 6,
+            Opcode::OpFalse => 7,
         }
     }
 }
@@ -133,6 +138,8 @@ impl From<&u8> for Opcode {
             3 => Opcode::OpSub,
             4 => Opcode::OpMul,
             5 => Opcode::OpDiv,
+            6 => Opcode::OpTrue,
+            7 => Opcode::OpFalse,
             _ => todo!(),
         }
     }
@@ -147,6 +154,8 @@ impl Into<String> for Opcode {
             Opcode::OpSub => "OpSub",
             Opcode::OpMul => "OpMul",
             Opcode::OpDiv => "OpDiv",
+            Opcode::OpTrue => "OpTrue",
+            Opcode::OpFalse => "OpFalse",
         }
         .to_string()
     }

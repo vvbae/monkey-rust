@@ -10,6 +10,9 @@ use crate::{
 
 const STACK_SIZE: usize = 2048;
 
+const TRUE: Object = Object::Boolean(true);
+const FALSE: Object = Object::Boolean(false);
+
 pub struct VM {
     constants: Vec<Object>,
     instructions: RefCell<Instructions>,
@@ -46,6 +49,12 @@ impl VM {
                 }
                 Opcode::OpPop => {
                     self.pop()?;
+                }
+                Opcode::OpTrue => {
+                    self.push(TRUE)?;
+                }
+                Opcode::OpFalse => {
+                    self.push(FALSE)?;
                 }
             }
 
