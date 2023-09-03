@@ -138,9 +138,9 @@ fn main() -> rustyline::Result<()> {
                                 let mut machine = VM::new(compiler.bytecode());
                                 machine.run().unwrap();
 
-                                let result = machine.stack_top();
+                                let last_popped = machine.last_popped_stack_ele();
                                 // let eval = evaluator.eval_program(program);
-                                println!("{}", result.unwrap());
+                                println!("{}", last_popped);
                             }
                             Err(Err::Error(_)) => println!("Parser error"),
                             Err(Err::Failure(_)) => println!("Parser failure"),

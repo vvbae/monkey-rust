@@ -91,6 +91,10 @@ pub fn read_u16(ins: &[u8]) -> u16 {
 pub enum Opcode {
     OpConstant,
     OpAdd,
+    OpPop,
+    OpSub,
+    OpMul,
+    OpDiv,
 }
 
 impl Opcode {
@@ -99,6 +103,10 @@ impl Opcode {
         match self {
             Opcode::OpConstant => Ok(vec![2]),
             Opcode::OpAdd => Ok(vec![]),
+            Opcode::OpPop => Ok(vec![]),
+            Opcode::OpSub => Ok(vec![]),
+            Opcode::OpMul => Ok(vec![]),
+            Opcode::OpDiv => Ok(vec![]),
             _ => Err(MonkeyError::OpcodeNotFound(self)),
         }
     }
@@ -108,6 +116,10 @@ impl Opcode {
         match op {
             Opcode::OpConstant => 0,
             Opcode::OpAdd => 1,
+            Opcode::OpPop => 2,
+            Opcode::OpSub => 3,
+            Opcode::OpMul => 4,
+            Opcode::OpDiv => 5,
         }
     }
 }
@@ -117,6 +129,10 @@ impl From<&u8> for Opcode {
         match v {
             0 => Opcode::OpConstant,
             1 => Opcode::OpAdd,
+            2 => Opcode::OpPop,
+            3 => Opcode::OpSub,
+            4 => Opcode::OpMul,
+            5 => Opcode::OpDiv,
             _ => todo!(),
         }
     }
@@ -127,6 +143,10 @@ impl Into<String> for Opcode {
         match self {
             Opcode::OpConstant => "OpConstant",
             Opcode::OpAdd => "OpAdd",
+            Opcode::OpPop => "OpPop",
+            Opcode::OpSub => "OpSub",
+            Opcode::OpMul => "OpMul",
+            Opcode::OpDiv => "OpDiv",
         }
         .to_string()
     }

@@ -25,7 +25,10 @@ impl Compiler {
 
     pub fn compile_statement(&mut self, stmt: Stmt) {
         match stmt {
-            Stmt::ExprStmt(expr) => self.compile_expr(expr),
+            Stmt::ExprStmt(expr) => {
+                self.compile_expr(expr);
+                self.emit(Opcode::OpPop, None);
+            }
             Stmt::LetStmt(ident, expr) => {
                 // some thing with ident
                 self.compile_expr(expr)
@@ -80,9 +83,9 @@ impl Compiler {
 
         match infix {
             Infix::Plus => self.emit(Opcode::OpAdd, None),
-            Infix::Minus => todo!(),
-            Infix::Divide => todo!(),
-            Infix::Multiply => todo!(),
+            Infix::Minus => self.emit(Opcode::OpSub, None),
+            Infix::Divide => self.emit(Opcode::OpDiv, None),
+            Infix::Multiply => self.emit(Opcode::OpMul, None),
             Infix::Equal => todo!(),
             Infix::NotEqual => todo!(),
             Infix::GreaterThanEqual => todo!(),

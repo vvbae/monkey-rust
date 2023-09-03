@@ -13,15 +13,58 @@ struct TestCase {
 
 #[test]
 fn test_int_arithmetic() {
-    let tests = vec![TestCase {
-        input: "1+2".to_string(),
-        expected_constants: vec![Object::Integer(1), Object::Integer(2)],
-        expected_instructions: vec![
-            make(Opcode::OpConstant, Some(vec![0])),
-            make(Opcode::OpConstant, Some(vec![1])),
-            make(Opcode::OpAdd, None),
-        ],
-    }];
+    let tests = vec![
+        TestCase {
+            input: "1+2".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpAdd, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "1; 2".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpPop, None),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "1-2".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpSub, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "1 * 2".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpMul, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "2/1".to_string(),
+            expected_constants: vec![Object::Integer(2), Object::Integer(1)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpDiv, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+    ];
 
     run_tests(tests)
 }

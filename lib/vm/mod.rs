@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use crate::{
     code::{read_u16, Instructions, Opcode},
     compiler::Bytecode,
@@ -10,32 +12,24 @@ const STACK_SIZE: usize = 2048;
 
 pub struct VM {
     constants: Vec<Object>,
-    instructions: Instructions,
+    instructions: RefCell<Instructions>,
 
-    stack: Vec<Object>,
-    sp: usize,
+    stack: RefCell<Vec<Object>>,
+    sp: RefCell<usize>,
 }
 
 impl VM {
     pub fn new(bytecode: Bytecode) -> Self {
         Self {
             constants: bytecode.constants,
-            instructions: bytecode.instructions,
-            stack: Vec::with_capacity(STACK_SIZE),
-            sp: 0,
+            instructions: RefCell::new(bytecode.instructions),
+            stack: RefCell::new(Vec::with_capacity(STACK_SIZE)),
+            sp: RefCell::new(0),
         }
-    }
-
-    pub fn stack_top(&self) -> Option<&Object> {
-        if self.sp == 0 {
-            return None;
-        }
-
-        Some(&self.stack[self.sp - 1])
     }
 
     pub fn run(&mut self) -> Result<()> {
-        let ins = self.instructions.clone();
+        let ins = self.instructions.borrow();
         let mut ip = 0;
 
         while ip < ins.len() {
@@ -43,34 +37,15 @@ impl VM {
 
             match op {
                 Opcode::OpConstant => {
-                    let const_index = read_u16(&self.instructions[ip + 1..ip + 3]);
+                    let const_index = read_u16(&ins[ip + 1..ip + 3]);
                     ip += 2;
-
-                    // FIXME: current is a workaround for not borrowing as immutable and mutable
-                    self.sp = Self::push(
-                        &mut self.stack,
-                        self.sp,
-                        self.constants[const_index as usize].clone(),
-                    )?;
+                    self.push(self.constants[const_index as usize].clone())?;
                 }
-                Opcode::OpAdd => {
-                    let (right, sp) = Self::pop(&mut self.stack, self.sp)?;
-                    self.sp = sp;
-                    let (left, sp) = Self::pop(&mut self.stack, self.sp)?;
-                    self.sp = sp;
-
-                    let left_val = match left {
-                        Object::Integer(v) => v,
-                        _ => todo!(),
-                    };
-
-                    let right_val = match right {
-                        Object::Integer(v) => v,
-                        _ => todo!(),
-                    };
-
-                    let res = right_val + left_val;
-                    self.sp = Self::push(&mut self.stack, self.sp, Object::Integer(res))?;
+                Opcode::OpAdd | Opcode::OpDiv | Opcode::OpSub | Opcode::OpMul => {
+                    self.execute_binary_operation(op)?;
+                }
+                Opcode::OpPop => {
+                    self.pop()?;
                 }
             }
 
@@ -80,23 +55,86 @@ impl VM {
         Ok(())
     }
 
+    fn execute_binary_operation(&self, op: Opcode) -> Result<()> {
+        let right = self.pop()?;
+        let left = self.pop()?;
+
+        let left_val = match left {
+            Object::Integer(v) => v,
+            _ => todo!(),
+        };
+
+        let right_val = match right {
+            Object::Integer(v) => v,
+            _ => todo!(),
+        };
+
+        let res = match op {
+            Opcode::OpAdd => right_val + left_val,
+            Opcode::OpSub => left_val - right_val,
+            Opcode::OpMul => right_val * left_val,
+            Opcode::OpDiv => left_val / right_val,
+            _ => unimplemented!("Unknown integer operator found: {:?}", op),
+        };
+
+        self.push(Object::Integer(res))?;
+
+        Ok(())
+    }
+
     /// Push obj to the top of the stack
-    pub fn push(stack: &mut Vec<Object>, sp: usize, obj: Object) -> Result<'static, usize> {
-        if sp >= STACK_SIZE {
+    pub fn push(&self, obj: Object) -> Result<()> {
+        let mut sp = self.sp.borrow_mut();
+        let mut stack = self.stack.borrow_mut();
+
+        if *sp >= STACK_SIZE {
             return Err(MonkeyError::StackOverflow);
         }
 
-        stack.push(obj);
-        Ok(sp + 1)
+        // FIXME: maybe change declaration to fill capacity
+        if *sp >= stack.len() {
+            stack.push(obj);
+        } else {
+            stack[*sp] = obj;
+        }
+
+        *sp += 1;
+
+        Ok(())
     }
 
-    /// Pop obj from the stack
-    pub fn pop(stack: &mut Vec<Object>, sp: usize) -> Result<'static, (Object, usize)> {
+    /// Decrement stack pointer, return last obj
+    pub fn pop(&self) -> Result<Object> {
+        let mut sp = self.sp.borrow_mut();
+        let stack = self.stack.borrow();
+
         if stack.len() == 0 {
             return Err(MonkeyError::EmptyStackException);
         }
 
-        Ok((stack.pop().unwrap(), sp - 1))
+        let obj = &stack[*sp - 1];
+        *sp -= 1;
+
+        Ok(obj.clone())
+    }
+
+    /// Last ele previously on the stack
+    pub fn last_popped_stack_ele(&self) -> Object {
+        let sp = self.sp.borrow();
+        let stack = self.stack.borrow();
+
+        stack[*sp].clone()
+    }
+
+    pub fn stack_top(&self) -> Option<Object> {
+        let sp = self.sp.borrow();
+        let stack = self.stack.borrow();
+
+        if *sp == 0 {
+            return None;
+        }
+
+        Some(stack[*sp - 1].clone())
     }
 }
 
