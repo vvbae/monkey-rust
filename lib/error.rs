@@ -8,6 +8,8 @@ pub enum MonkeyError<'a> {
     OpcodeNotFound(&'a Opcode),
     #[error("Max stack size reached")]
     StackOverflow,
+    #[error("Empty stack")]
+    EmptyStackException,
 }
 
 pub type Result<'a, T> = std::result::Result<T, MonkeyError<'a>>;

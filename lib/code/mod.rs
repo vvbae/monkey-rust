@@ -5,8 +5,9 @@ use crate::error::{MonkeyError, Result};
 pub type Instructions = Vec<u8>;
 
 // FIXME I dont know why result is not working here because of lifetime issue.
-pub fn make(op: Opcode, operands: Vec<u16>) -> Instructions {
+pub fn make(op: Opcode, operands: Option<Vec<u16>>) -> Instructions {
     let widths = op.look_up().unwrap();
+    let operands = operands.unwrap_or(vec![]);
     let instruction_len: usize = 1 + widths.iter().sum::<u8>() as usize;
 
     let mut instructions = vec![0; instruction_len];
@@ -58,6 +59,7 @@ fn fmt_ins(op: Opcode, widths: &[u8], operands: Vec<u16>) -> String {
 
     let opcode_str: String = op.into();
     match operand_cnt {
+        0 => format!("{}", opcode_str),
         1 => format!("{} {}", opcode_str, operands[0]),
         _ => format!("ERROR: unhandled operandCount for {}\n", opcode_str),
     }
@@ -114,6 +116,7 @@ impl From<&u8> for Opcode {
     fn from(v: &u8) -> Opcode {
         match v {
             0 => Opcode::OpConstant,
+            1 => Opcode::OpAdd,
             _ => todo!(),
         }
     }

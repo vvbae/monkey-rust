@@ -36,8 +36,9 @@ impl VM {
 
     pub fn run(&mut self) -> Result<()> {
         let ins = self.instructions.clone();
+        let mut ip = 0;
 
-        for mut ip in 0..ins.len() {
+        while ip < ins.len() {
             let op = Opcode::from(&ins[ip]);
 
             match op {
@@ -52,7 +53,28 @@ impl VM {
                         self.constants[const_index as usize].clone(),
                     )?;
                 }
+                Opcode::OpAdd => {
+                    let (right, sp) = Self::pop(&mut self.stack, self.sp)?;
+                    self.sp = sp;
+                    let (left, sp) = Self::pop(&mut self.stack, self.sp)?;
+                    self.sp = sp;
+
+                    let left_val = match left {
+                        Object::Integer(v) => v,
+                        _ => todo!(),
+                    };
+
+                    let right_val = match right {
+                        Object::Integer(v) => v,
+                        _ => todo!(),
+                    };
+
+                    let res = right_val + left_val;
+                    self.sp = Self::push(&mut self.stack, self.sp, Object::Integer(res))?;
+                }
             }
+
+            ip += 1
         }
 
         Ok(())
@@ -65,8 +87,16 @@ impl VM {
         }
 
         stack.push(obj);
-
         Ok(sp + 1)
+    }
+
+    /// Pop obj from the stack
+    pub fn pop(stack: &mut Vec<Object>, sp: usize) -> Result<'static, (Object, usize)> {
+        if stack.len() == 0 {
+            return Err(MonkeyError::EmptyStackException);
+        }
+
+        Ok((stack.pop().unwrap(), sp - 1))
     }
 }
 

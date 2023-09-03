@@ -3,10 +3,12 @@ extern crate nom;
 extern crate rustyline;
 extern crate rustyline_derive;
 
-use monkey_lib::evaluator::*;
+use monkey_lib::compiler::Compiler;
+// use monkey_lib::evaluator::*;
 use monkey_lib::lexer::token::*;
 use monkey_lib::lexer::*;
 use monkey_lib::parser::*;
+use monkey_lib::vm::VM;
 use nom::Err;
 use rustyline::completion::{Completer, FilenameCompleter, Pair};
 use rustyline::config::OutputStreamType;
@@ -114,7 +116,8 @@ fn main() -> rustyline::Result<()> {
     println!("Press Ctrl-D or enter \"quit\" to exit.");
     println!();
 
-    let mut evaluator = Evaluator::new();
+    // let mut evaluator = Evaluator::new();
+    let mut compiler = Compiler::new();
     let mut count = 1;
 
     loop {
@@ -131,8 +134,13 @@ fn main() -> rustyline::Result<()> {
                         let parsed = Parser::parse_tokens(tokens);
                         match parsed {
                             Ok((_, program)) => {
-                                let eval = evaluator.eval_program(program);
-                                println!("{}", eval);
+                                compiler.compile(program);
+                                let mut machine = VM::new(compiler.bytecode());
+                                machine.run().unwrap();
+
+                                let result = machine.stack_top();
+                                // let eval = evaluator.eval_program(program);
+                                println!("{}", result.unwrap());
                             }
                             Err(Err::Error(_)) => println!("Parser error"),
                             Err(Err::Failure(_)) => println!("Parser failure"),

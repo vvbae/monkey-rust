@@ -19,7 +19,7 @@ fn test_int_arithmetic() {
     let tests = vec![
         make_testcase("1", Object::Integer(1)),
         make_testcase("2", Object::Integer(2)),
-        make_testcase("1 + 2", Object::Integer(2)),
+        make_testcase("1 + 2", Object::Integer(3)),
     ];
 
     run_tests(tests)

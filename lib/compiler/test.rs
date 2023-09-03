@@ -17,8 +17,9 @@ fn test_int_arithmetic() {
         input: "1+2".to_string(),
         expected_constants: vec![Object::Integer(1), Object::Integer(2)],
         expected_instructions: vec![
-            make(Opcode::OpConstant, vec![0]),
-            make(Opcode::OpConstant, vec![1]),
+            make(Opcode::OpConstant, Some(vec![0])),
+            make(Opcode::OpConstant, Some(vec![1])),
+            make(Opcode::OpAdd, None),
         ],
     }];
 
