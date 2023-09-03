@@ -40,6 +40,22 @@ fn test_bool_expr() {
     let tests = vec![
         make_testcase("true", Object::Boolean(true)),
         make_testcase("false", Object::Boolean(false)),
+        make_testcase("1 < 2", Object::Boolean(true)),
+        make_testcase("1 > 2", Object::Boolean(false)),
+        make_testcase("1 < 1", Object::Boolean(false)),
+        make_testcase("1 > 1", Object::Boolean(false)),
+        make_testcase("1 == 1", Object::Boolean(true)),
+        make_testcase("1 != 1", Object::Boolean(false)),
+        make_testcase("1 == 2", Object::Boolean(false)),
+        make_testcase("true == true", Object::Boolean(true)),
+        make_testcase("false == false", Object::Boolean(true)),
+        make_testcase("true == false", Object::Boolean(false)),
+        make_testcase("true != false", Object::Boolean(true)),
+        make_testcase("false != true", Object::Boolean(true)),
+        make_testcase("(1 < 2) == true", Object::Boolean(true)),
+        make_testcase("(1 < 2) == false", Object::Boolean(false)),
+        make_testcase("(1 > 2) == true", Object::Boolean(false)),
+        make_testcase("(1 > 2) == false", Object::Boolean(true)),
     ];
 
     run_tests(tests);

@@ -1,12 +1,10 @@
 use byteorder::{BigEndian, ByteOrder};
 
-use crate::error::Result;
-
 pub type Instructions = Vec<u8>;
 
 // FIXME I dont know why result is not working here because of lifetime issue.
 pub fn make(op: Opcode, operands: Option<Vec<u16>>) -> Instructions {
-    let widths = op.look_up().unwrap();
+    let widths = op.look_up();
     let operands = operands.unwrap_or(vec![]);
     let instruction_len: usize = 1 + widths.iter().sum::<u8>() as usize;
 
@@ -33,7 +31,7 @@ pub fn string(ins: Instructions) -> String {
 
     while i < ins.len() {
         let op: Opcode = (&ins[i]).into();
-        let widths = op.look_up().unwrap();
+        let widths = op.look_up();
 
         let (operands, read) = read_operands(&widths, ins[(i + 1) as usize..].to_vec());
         let fmtted = fmt_ins(op, &widths, operands);
@@ -97,20 +95,26 @@ pub enum Opcode {
     OpDiv,
     OpTrue,
     OpFalse,
+    OpEqual,
+    OpNotEqual,
+    OpGreaterThan,
 }
 
 impl Opcode {
     /// Look up the operand width for given opcode
-    fn look_up(&self) -> Result<Vec<u8>> {
+    fn look_up(&self) -> Vec<u8> {
         match self {
-            Opcode::OpConstant => Ok(vec![2]),
-            Opcode::OpAdd => Ok(vec![]),
-            Opcode::OpPop => Ok(vec![]),
-            Opcode::OpSub => Ok(vec![]),
-            Opcode::OpMul => Ok(vec![]),
-            Opcode::OpDiv => Ok(vec![]),
-            Opcode::OpTrue => Ok(vec![]),
-            Opcode::OpFalse => Ok(vec![]),
+            Opcode::OpConstant => vec![2],
+            Opcode::OpAdd => vec![],
+            Opcode::OpPop => vec![],
+            Opcode::OpSub => vec![],
+            Opcode::OpMul => vec![],
+            Opcode::OpDiv => vec![],
+            Opcode::OpTrue => vec![],
+            Opcode::OpFalse => vec![],
+            Opcode::OpEqual => vec![],
+            Opcode::OpNotEqual => vec![],
+            Opcode::OpGreaterThan => vec![],
         }
     }
 
@@ -125,6 +129,9 @@ impl Opcode {
             Opcode::OpDiv => 5,
             Opcode::OpTrue => 6,
             Opcode::OpFalse => 7,
+            Opcode::OpEqual => 8,
+            Opcode::OpNotEqual => 9,
+            Opcode::OpGreaterThan => 10,
         }
     }
 }
@@ -140,6 +147,9 @@ impl From<&u8> for Opcode {
             5 => Opcode::OpDiv,
             6 => Opcode::OpTrue,
             7 => Opcode::OpFalse,
+            8 => Opcode::OpEqual,
+            9 => Opcode::OpNotEqual,
+            10 => Opcode::OpGreaterThan,
             _ => todo!(),
         }
     }
@@ -156,6 +166,9 @@ impl Into<String> for Opcode {
             Opcode::OpDiv => "OpDiv",
             Opcode::OpTrue => "OpTrue",
             Opcode::OpFalse => "OpFalse",
+            Opcode::OpEqual => "OpEqual",
+            Opcode::OpNotEqual => "OpNotEqual",
+            Opcode::OpGreaterThan => "OpGreaterThan",
         }
         .to_string()
     }

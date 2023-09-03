@@ -82,6 +82,66 @@ fn test_bool_expr() {
             expected_constants: vec![],
             expected_instructions: vec![make(Opcode::OpFalse, None), make(Opcode::OpPop, None)],
         },
+        TestCase {
+            input: "1 > 2".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpGreaterThan, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "1 < 2".to_string(),
+            expected_constants: vec![Object::Integer(2), Object::Integer(1)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpGreaterThan, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "1 == 2".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpEqual, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "1 != 2".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpNotEqual, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "true == false".to_string(),
+            expected_constants: vec![],
+            expected_instructions: vec![
+                make(Opcode::OpTrue, None),
+                make(Opcode::OpFalse, None),
+                make(Opcode::OpEqual, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "true != false".to_string(),
+            expected_constants: vec![],
+            expected_instructions: vec![
+                make(Opcode::OpTrue, None),
+                make(Opcode::OpFalse, None),
+                make(Opcode::OpNotEqual, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
     ];
 
     run_tests(tests)

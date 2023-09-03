@@ -16,7 +16,6 @@ const FALSE: Object = Object::Boolean(false);
 pub struct VM {
     constants: Vec<Object>,
     instructions: RefCell<Instructions>,
-
     stack: RefCell<Vec<Object>>,
     sp: RefCell<usize>,
 }
@@ -56,6 +55,9 @@ impl VM {
                 Opcode::OpFalse => {
                     self.push(FALSE)?;
                 }
+                Opcode::OpEqual | Opcode::OpNotEqual | Opcode::OpGreaterThan => {
+                    self.execute_comparison(op)?;
+                }
             }
 
             ip += 1
@@ -87,6 +89,49 @@ impl VM {
         };
 
         self.push(Object::Integer(res))?;
+
+        Ok(())
+    }
+
+    fn execute_comparison(&self, op: Opcode) -> Result<()> {
+        let right = self.pop()?;
+        let left = self.pop()?;
+
+        match (&left, &right) {
+            (Object::Integer(_l), Object::Integer(_r)) => {
+                return self.execute_int_comparison(op, &left, &right);
+            }
+            _ => {
+                match op {
+                    Opcode::OpEqual => self.push(native_to_object(right == left)),
+                    Opcode::OpNotEqual => self.push(native_to_object(right != left)),
+                    _ => {
+                        unimplemented!("Unknown operator found: {:?} ({:?} {:?})", op, left, right)
+                    }
+                }?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn execute_int_comparison(&self, op: Opcode, left: &Object, right: &Object) -> Result<()> {
+        let left_val = match left {
+            Object::Integer(v) => v,
+            _ => todo!(),
+        };
+
+        let right_val = match right {
+            Object::Integer(v) => v,
+            _ => todo!(),
+        };
+
+        match op {
+            Opcode::OpEqual => self.push(native_to_object(right_val == left_val)),
+            Opcode::OpNotEqual => self.push(native_to_object(right_val != left_val)),
+            Opcode::OpGreaterThan => self.push(native_to_object(left_val > right_val)),
+            _ => unimplemented!("Unknown operator found: {:?} ({:?} {:?})", op, left, right),
+        }?;
 
         Ok(())
     }
@@ -144,6 +189,13 @@ impl VM {
         }
 
         Some(stack[*sp - 1].clone())
+    }
+}
+
+pub(super) fn native_to_object(input: bool) -> Object {
+    match input {
+        true => TRUE,
+        false => FALSE,
     }
 }
 

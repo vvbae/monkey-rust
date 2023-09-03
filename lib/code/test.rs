@@ -51,7 +51,7 @@ fn test_read_operands() {
     for test in tests.iter() {
         let instruction = make(test.op, Some(test.operands.clone()));
 
-        let widths = test.op.look_up().unwrap();
+        let widths = test.op.look_up();
         let (operands_read, n) = read_operands(&widths, instruction[1..].to_vec());
         assert_eq!(n as usize, operands_read.len());
 

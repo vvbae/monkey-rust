@@ -89,20 +89,28 @@ impl Compiler {
     }
 
     pub fn compile_infix(&mut self, infix: &Infix, expr1: Expr, expr2: Expr) {
-        self.compile_expr(expr1);
-        self.compile_expr(expr2);
-
         match infix {
-            Infix::Plus => self.emit(Opcode::OpAdd, None),
-            Infix::Minus => self.emit(Opcode::OpSub, None),
-            Infix::Divide => self.emit(Opcode::OpDiv, None),
-            Infix::Multiply => self.emit(Opcode::OpMul, None),
-            Infix::Equal => todo!(),
-            Infix::NotEqual => todo!(),
-            Infix::GreaterThanEqual => todo!(),
-            Infix::LessThanEqual => todo!(),
-            Infix::GreaterThan => todo!(),
-            Infix::LessThan => todo!(),
+            Infix::LessThan => {
+                self.compile_expr(expr2);
+                self.compile_expr(expr1);
+                self.emit(Opcode::OpGreaterThan, None);
+            }
+            _ => {
+                self.compile_expr(expr1);
+                self.compile_expr(expr2);
+                match infix {
+                    Infix::Plus => self.emit(Opcode::OpAdd, None),
+                    Infix::Minus => self.emit(Opcode::OpSub, None),
+                    Infix::Divide => self.emit(Opcode::OpDiv, None),
+                    Infix::Multiply => self.emit(Opcode::OpMul, None),
+                    Infix::Equal => self.emit(Opcode::OpEqual, None),
+                    Infix::NotEqual => self.emit(Opcode::OpNotEqual, None),
+                    Infix::GreaterThanEqual => todo!(),
+                    Infix::LessThanEqual => todo!(),
+                    Infix::GreaterThan => self.emit(Opcode::OpGreaterThan, None),
+                    _ => unimplemented!(),
+                };
+            }
         };
     }
 
