@@ -66,6 +66,28 @@ fn test_bool_expr() {
         make_testcase("!!true", Object::Boolean(true)),
         make_testcase("!!false", Object::Boolean(false)),
         make_testcase("!!5", Object::Boolean(true)),
+        make_testcase("!(if (false) { 5; })", Object::Boolean(true)),
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_conditionals() {
+    let tests = vec![
+        make_testcase("if (true) { 10 }", Object::Integer(10)),
+        make_testcase("if (true) { 10 } else { 20 }", Object::Integer(10)),
+        make_testcase("if (false) { 10 } else { 20 } ", Object::Integer(20)),
+        make_testcase("if (1) { 10 }", Object::Integer(10)),
+        make_testcase("if (1 < 2) { 10 }", Object::Integer(10)),
+        make_testcase("if (1 < 2) { 10 } else { 20 }", Object::Integer(10)),
+        make_testcase("if (1 > 2) { 10 } else { 20 }", Object::Integer(20)),
+        make_testcase("if (1 > 2) { 10 }", NULL),
+        make_testcase("if (false) { 10 }", NULL),
+        make_testcase(
+            "if ((if (false) { 10 })) { 10 } else { 20 }",
+            Object::Integer(20),
+        ),
     ];
 
     run_tests(tests);
@@ -114,6 +136,10 @@ fn test_expected(expected: Object, actual: &Object) {
     match expected {
         Object::Integer(v) => test_int_obj(v, actual.clone()),
         Object::Boolean(v) => test_bool_obj(v, actual.clone()),
+        Object::Null => match actual {
+            Object::Null => {}
+            _ => panic!("object is not Null: {:?} ({:?})", actual, actual),
+        },
         _ => todo!(),
     }
 }

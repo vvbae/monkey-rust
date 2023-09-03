@@ -7,6 +7,9 @@ use crate::{
 pub struct Compiler {
     instructions: Instructions,
     constants: Vec<Object>,
+
+    last_ins: Option<EmittedInstruction>,
+    prev_ins: Option<EmittedInstruction>,
 }
 
 impl Compiler {
@@ -14,6 +17,8 @@ impl Compiler {
         Self {
             instructions: Instructions::new(),
             constants: Vec::new(),
+            last_ins: None,
+            prev_ins: None,
         }
     }
 
@@ -120,8 +125,43 @@ impl Compiler {
         };
     }
 
-    pub fn compile_if(&self, cond: Expr, consequence: Vec<Stmt>, alternative: Option<Vec<Stmt>>) {
-        todo!()
+    pub fn compile_if(
+        &mut self,
+        cond: Expr,
+        consequence: Vec<Stmt>,
+        alternative: Option<Vec<Stmt>>,
+    ) {
+        self.compile_expr(cond);
+
+        let jump_not_truthy_index = self.emit(Opcode::OpJumpNotTruthy, Some(vec![9999])); // condition => jump to the alternative
+
+        for stmt in consequence {
+            self.compile_statement(stmt);
+        }
+
+        if self.last_ins_is_pop() {
+            self.remove_last_pop()
+        }
+
+        let jump_index = self.emit(Opcode::OpJump, Some(vec![9999])); // else => jump to the end of if-else block
+
+        let after_conseq_pos = self.instructions.len();
+        self.change_operand(jump_not_truthy_index, after_conseq_pos as u16);
+
+        if alternative == None {
+            self.emit(Opcode::OpNull, None);
+        } else {
+            for stmt in alternative.unwrap() {
+                self.compile_statement(stmt)
+            }
+
+            if self.last_ins_is_pop() {
+                self.remove_last_pop()
+            }
+        }
+
+        let after_alter_pos = self.instructions.len();
+        self.change_operand(jump_index, after_alter_pos as u16);
     }
 
     pub fn compile_fn(&self, params: Vec<Ident>, body: Vec<Stmt>) {
@@ -154,7 +194,22 @@ impl Compiler {
     fn emit(&mut self, op: Opcode, operands: Option<Vec<u16>>) -> usize {
         let ins = make(op, operands);
         let pos = self.add_instruction(ins);
+
+        self.set_last_instruction(op, pos);
+
         pos
+    }
+
+    fn set_last_instruction(&mut self, op: Opcode, pos: usize) {
+        let prev = match self.last_ins {
+            Some(ins) => Some(ins),
+            None => None,
+        };
+
+        let last = EmittedInstruction::new(op, pos);
+
+        self.prev_ins = prev;
+        self.last_ins = Some(last);
     }
 
     /// Add the new instruction to memory, return its position
@@ -162,6 +217,28 @@ impl Compiler {
         let pos_new_ins = self.instructions.len();
         self.instructions.append(&mut ins);
         pos_new_ins
+    }
+
+    fn last_ins_is_pop(&self) -> bool {
+        self.last_ins.unwrap().opcode == Opcode::OpPop
+    }
+
+    /// Remove last instruction, previous instruction becomes the last
+    fn remove_last_pop(&mut self) {
+        self.instructions.pop();
+        self.last_ins = self.prev_ins;
+    }
+
+    fn replace_ins(&mut self, pos: usize, new_ins: Vec<u8>) {
+        self.instructions[pos..pos + new_ins.len()].copy_from_slice(&new_ins);
+    }
+
+    /// Update the instruction at index op_pos with operand
+    fn change_operand(&mut self, op_pos: usize, operand: u16) {
+        let op = Opcode::from(&self.instructions[op_pos]);
+        let new_ins = make(op, Some(vec![operand]));
+
+        self.replace_ins(op_pos, new_ins);
     }
 
     pub fn bytecode(&self) -> Bytecode {
@@ -175,6 +252,18 @@ impl Compiler {
 pub struct Bytecode {
     pub instructions: Instructions,
     pub constants: Vec<Object>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct EmittedInstruction {
+    pub opcode: Opcode,
+    pub position: usize,
+}
+
+impl EmittedInstruction {
+    pub fn new(opcode: Opcode, position: usize) -> Self {
+        Self { opcode, position }
+    }
 }
 
 #[cfg(test)]

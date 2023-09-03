@@ -165,6 +165,46 @@ fn test_bool_expr() {
     run_tests(tests)
 }
 
+#[test]
+fn test_conditionals() {
+    let tests = vec![
+        TestCase {
+            input: "if (true) { 10 }; 3333;".to_string(),
+            expected_constants: vec![Object::Integer(10), Object::Integer(3333)],
+            expected_instructions: vec![
+                make(Opcode::OpTrue, None),
+                make(Opcode::OpJumpNotTruthy, Some(vec![10])),
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpJump, Some(vec![11])),
+                make(Opcode::OpNull, None), // the alternative placeholder
+                make(Opcode::OpPop, None),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "if (true) { 10 } else { 20 }; 3333;".to_string(),
+            expected_constants: vec![
+                Object::Integer(10),
+                Object::Integer(20),
+                Object::Integer(3333),
+            ],
+            expected_instructions: vec![
+                make(Opcode::OpTrue, None),
+                make(Opcode::OpJumpNotTruthy, Some(vec![10])),
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpJump, Some(vec![13])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpPop, None),
+                make(Opcode::OpConstant, Some(vec![2])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+    ];
+
+    run_tests(tests);
+}
+
 fn test_int_object(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => assert_eq!(expected, v),

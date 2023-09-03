@@ -85,7 +85,7 @@ pub fn read_u16(ins: &[u8]) -> u16 {
     BigEndian::read_u16(&ins)
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Opcode {
     OpConstant,
     OpAdd,
@@ -100,6 +100,9 @@ pub enum Opcode {
     OpGreaterThan,
     OpMinus,
     OpBang,
+    OpJumpNotTruthy,
+    OpJump,
+    OpNull,
 }
 
 impl Opcode {
@@ -119,6 +122,9 @@ impl Opcode {
             Opcode::OpGreaterThan => vec![],
             Opcode::OpMinus => vec![],
             Opcode::OpBang => vec![],
+            Opcode::OpJumpNotTruthy => vec![2],
+            Opcode::OpJump => vec![2],
+            Opcode::OpNull => vec![],
         }
     }
 
@@ -138,6 +144,9 @@ impl Opcode {
             Opcode::OpGreaterThan => 10,
             Opcode::OpMinus => 11,
             Opcode::OpBang => 12,
+            Opcode::OpJumpNotTruthy => 13,
+            Opcode::OpJump => 14,
+            Opcode::OpNull => 15,
         }
     }
 }
@@ -158,6 +167,9 @@ impl From<&u8> for Opcode {
             10 => Opcode::OpGreaterThan,
             11 => Opcode::OpMinus,
             12 => Opcode::OpBang,
+            13 => Opcode::OpJumpNotTruthy,
+            14 => Opcode::OpJump,
+            15 => Opcode::OpNull,
             _ => todo!(),
         }
     }
@@ -179,6 +191,9 @@ impl Into<String> for Opcode {
             Opcode::OpGreaterThan => "OpGreaterThan",
             Opcode::OpMinus => "OpMinus",
             Opcode::OpBang => "OpBang",
+            Opcode::OpJumpNotTruthy => "OpJumpNotTruthy",
+            Opcode::OpJump => "OpJump",
+            Opcode::OpNull => "OpNull",
         }
         .to_string()
     }

@@ -12,6 +12,7 @@ const STACK_SIZE: usize = 2048;
 
 const TRUE: Object = Object::Boolean(true);
 const FALSE: Object = Object::Boolean(false);
+const NULL: Object = Object::Null;
 
 pub struct VM {
     constants: Vec<Object>,
@@ -49,21 +50,27 @@ impl VM {
                 Opcode::OpPop => {
                     self.pop()?;
                 }
-                Opcode::OpTrue => {
-                    self.push(TRUE)?;
-                }
-                Opcode::OpFalse => {
-                    self.push(FALSE)?;
-                }
+                Opcode::OpTrue => self.push(TRUE)?,
+                Opcode::OpFalse => self.push(FALSE)?,
                 Opcode::OpEqual | Opcode::OpNotEqual | Opcode::OpGreaterThan => {
-                    self.execute_comparison(op)?;
+                    self.execute_comparison(op)?
                 }
-                Opcode::OpMinus => {
-                    self.execute_minus_operator()?;
+                Opcode::OpMinus => self.execute_minus_operator()?,
+                Opcode::OpBang => self.execute_bang_operator()?,
+                Opcode::OpJumpNotTruthy => {
+                    let pos = read_u16(&ins[ip + 1..ip + 3]) as usize;
+                    ip += 2; // continue to consequence
+
+                    let condition = self.pop()?;
+                    if !Self::is_truthy(condition) {
+                        ip = pos - 1; // jump to alternative
+                    }
                 }
-                Opcode::OpBang => {
-                    self.execute_bang_operator()?;
+                Opcode::OpJump => {
+                    let pos = read_u16(&ins[ip + 1..ip + 3]) as usize;
+                    ip = pos - 1;
                 }
+                Opcode::OpNull => self.push(NULL)?,
             }
 
             ip += 1
@@ -150,6 +157,7 @@ impl VM {
                 true => self.push(FALSE),
                 false => self.push(TRUE),
             },
+            Object::Null => self.push(NULL),
             _ => self.push(FALSE),
         }?;
 
@@ -165,6 +173,14 @@ impl VM {
         }?;
 
         Ok(())
+    }
+
+    fn is_truthy(obj: Object) -> bool {
+        match obj {
+            Object::Boolean(v) => v,
+            Object::Null => false,
+            _ => true,
+        }
     }
 
     /// Push obj to the top of the stack
