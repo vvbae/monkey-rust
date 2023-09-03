@@ -81,13 +81,14 @@ pub fn read_operands(widths: &[u8], ins: Instructions) -> (Vec<u16>, u8) {
 }
 
 /// Read u16 from instruction
-fn read_u16(ins: &[u8]) -> u16 {
+pub fn read_u16(ins: &[u8]) -> u16 {
     BigEndian::read_u16(&ins)
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum Opcode {
     OpConstant,
+    OpAdd,
 }
 
 impl Opcode {
@@ -95,6 +96,7 @@ impl Opcode {
     fn look_up(&self) -> Result<Vec<u8>> {
         match self {
             Opcode::OpConstant => Ok(vec![2]),
+            Opcode::OpAdd => Ok(vec![]),
             _ => Err(MonkeyError::OpcodeNotFound(self)),
         }
     }
@@ -102,7 +104,8 @@ impl Opcode {
     /// Represent opcode as u8
     fn to_byte(op: Opcode) -> u8 {
         match op {
-            Opcode::OpConstant => 1,
+            Opcode::OpConstant => 0,
+            Opcode::OpAdd => 1,
         }
     }
 }
@@ -110,7 +113,7 @@ impl Opcode {
 impl From<&u8> for Opcode {
     fn from(v: &u8) -> Opcode {
         match v {
-            1 => Opcode::OpConstant,
+            0 => Opcode::OpConstant,
             _ => todo!(),
         }
     }
@@ -120,6 +123,7 @@ impl Into<String> for Opcode {
     fn into(self) -> String {
         match self {
             Opcode::OpConstant => "OpConstant",
+            Opcode::OpAdd => "OpAdd",
         }
         .to_string()
     }

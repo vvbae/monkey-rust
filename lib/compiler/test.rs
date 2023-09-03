@@ -1,7 +1,6 @@
 use crate::{
     code::{make, Opcode},
-    lexer::{token::Tokens, Lexer},
-    parser::{ast::Program, Parser},
+    common::parse,
 };
 
 use super::*;
@@ -29,7 +28,7 @@ fn test_int_arithmetic() {
 fn test_int_object(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => assert_eq!(expected, v),
-        _ => panic!(),
+        _ => panic!("object is not Integer. got={:?}", actual),
     }
 }
 
@@ -54,14 +53,6 @@ fn test_constants(expected: Vec<Object>, actual: Vec<Object>) {
             Object::Error(_) => todo!(),
         }
     }
-}
-
-fn parse(input: String) -> Program {
-    let (_, l) = Lexer::lex_tokens(input.as_bytes()).unwrap();
-    let tokens = Tokens::new(&l);
-    let (_, p) = Parser::parse_tokens(tokens).unwrap();
-
-    p
 }
 
 fn run_tests(tests: Vec<TestCase>) {

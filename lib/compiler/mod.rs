@@ -141,8 +141,8 @@ impl Compiler {
 }
 
 pub struct Bytecode {
-    instructions: Instructions,
-    constants: Vec<Object>,
+    pub instructions: Instructions,
+    pub constants: Vec<Object>,
 }
 
 #[cfg(test)]
