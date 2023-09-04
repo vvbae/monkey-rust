@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash};
+use std::collections::HashMap;
 
 use crate::{
     common::{oth, parse},
@@ -189,6 +189,42 @@ fn test_index_expr() {
         make_testcase("{1: 1, 2: 2}[2]", Object::Integer(2)),
         make_testcase("{1: 1}[0]", Object::Null),
         make_testcase("{}[0]", Object::Null),
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_call_fn_without_args() {
+    let tests = vec![
+        make_testcase(
+            "let fivePlusTen = fn() { 5 + 10; }; fivePlusTen();",
+            Object::Integer(15),
+        ),
+        make_testcase(
+            "let one = fn() { 1; }; let two = fn() { 2; }; one() + two()",
+            Object::Integer(3),
+        ),
+        make_testcase(
+            "let a = fn() { 1 }; let b = fn() { a() + 1 }; let c = fn() { b() + 1 }; c();",
+            Object::Integer(3),
+        ),
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_call_fn_without_return_val() {
+    let tests = vec![
+        make_testcase("let noReturn = fn() { }; noReturn();", Object::Null),
+        make_testcase(
+            "let noReturn = fn() { };
+            let noReturnTwo = fn() { noReturn(); };
+            noReturn();
+            noReturnTwo();",
+            Object::Null,
+        ),
     ];
 
     run_tests(tests);

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
-    code::{read_u16, Instructions, Opcode},
+    code::{read_u16, Opcode},
     common::oth,
     compiler::Bytecode,
     error::MonkeyError,
@@ -9,8 +9,11 @@ use crate::{
     evaluator::object::Object,
 };
 
+use self::frame::Frame;
+
 const STACK_SIZE: usize = 2048;
 const GLOBAL_SIZE: usize = 65536;
+const MAX_FRAMES: usize = 1024;
 
 const TRUE: Object = Object::Boolean(true);
 const FALSE: Object = Object::Boolean(false);
@@ -18,34 +21,53 @@ const NULL: Object = Object::Null;
 
 pub struct VM {
     constants: Vec<Object>,
-    instructions: RefCell<Instructions>,
+
     stack: RefCell<Vec<Object>>,
     sp: RefCell<usize>,
+
     globals: RefCell<Vec<Object>>,
+
+    frames: RefCell<Vec<Frame>>,
+    frame_index: RefCell<usize>,
+
+    curr_frame: RefCell<Frame>, // a workaround for immutable borrow
+    curr_frame_index: RefCell<usize>,
 }
 
 impl VM {
     pub fn new(bytecode: Bytecode) -> Self {
+        let main_fn = Object::CompiledFn(bytecode.instructions.clone(), 0, 0);
+        let main_frame = Frame::new(main_fn);
+
+        let mut frames = Vec::with_capacity(MAX_FRAMES);
+        frames.push(main_frame.clone());
+
         Self {
             constants: bytecode.constants,
-            instructions: RefCell::new(bytecode.instructions),
             stack: RefCell::new(Vec::with_capacity(STACK_SIZE)),
             sp: RefCell::new(0),
             globals: RefCell::new(Vec::with_capacity(GLOBAL_SIZE)),
+            frames: RefCell::new(frames),
+            frame_index: RefCell::new(1),
+            curr_frame: RefCell::new(main_frame),
+            curr_frame_index: RefCell::new(0),
         }
     }
 
     pub fn run(&mut self) -> Result<()> {
-        let ins = self.instructions.borrow();
-        let mut ip = 0;
+        let mut current_frame = self.curr_frame.borrow_mut().clone();
 
-        while ip < ins.len() {
-            let op = Opcode::from(&ins[ip]);
+        while current_frame.ip < current_frame.instructions().len() as i64 - 1 {
+            current_frame.ip += 1;
+
+            let ip = current_frame.ip as usize;
+            let ins = current_frame.instructions();
+            let op = Opcode::from(&ins[ip as usize]);
 
             match op {
                 Opcode::OpConstant => {
                     let const_index = read_u16(&ins[ip + 1..ip + 3]);
-                    ip += 2;
+                    current_frame.ip += 2;
                     self.push(self.constants[const_index as usize].clone())?;
                 }
                 Opcode::OpAdd | Opcode::OpDiv | Opcode::OpSub | Opcode::OpMul => {
@@ -63,29 +85,29 @@ impl VM {
                 Opcode::OpBang => self.execute_bang_operator()?,
                 Opcode::OpJumpNotTruthy => {
                     let pos = read_u16(&ins[ip + 1..ip + 3]) as usize;
-                    ip += 2; // continue to consequence
+                    current_frame.ip += 2; // continue to consequence
 
                     let condition = self.pop()?;
                     if !Self::is_truthy(condition) {
-                        ip = pos - 1; // jump to alternative
+                        current_frame.ip = pos as i64 - 1; // jump to alternative
                     }
                 }
                 Opcode::OpJump => {
                     let pos = read_u16(&ins[ip + 1..ip + 3]) as usize;
-                    ip = pos - 1;
+                    current_frame.ip = pos as i64 - 1;
                 }
                 Opcode::OpNull => self.push(NULL)?,
                 Opcode::OpGetGlobal => {
                     let globals = self.globals.borrow();
                     let global_index = read_u16(&ins[ip + 1..ip + 3]) as usize;
-                    ip += 2;
+                    current_frame.ip += 2;
 
                     self.push(globals[global_index].clone())?;
                 }
                 Opcode::OpSetGlobal => {
                     let mut globals = self.globals.borrow_mut();
                     let global_index = read_u16(&ins[ip + 1..ip + 3]) as usize;
-                    ip += 2;
+                    current_frame.ip += 2;
 
                     let value = self.pop()?;
                     if global_index >= globals.len() {
@@ -98,7 +120,7 @@ impl VM {
                     let array = {
                         let mut sp = self.sp.borrow_mut();
                         let num_ele = read_u16(&ins[ip + 1..ip + 3]) as usize;
-                        ip += 2;
+                        current_frame.ip += 2;
 
                         let array = self.build_array(*sp - num_ele, *sp);
                         *sp -= num_ele;
@@ -112,7 +134,7 @@ impl VM {
                     let hashmap = {
                         let mut sp = self.sp.borrow_mut();
                         let num_ele = read_u16(&ins[ip + 1..ip + 3]) as usize;
-                        ip += 2;
+                        current_frame.ip += 2;
 
                         let hash = self.build_hash(*sp - num_ele, *sp);
                         *sp -= num_ele;
@@ -128,12 +150,70 @@ impl VM {
 
                     self.execute_index_expr(&left, &index)?;
                 }
-                Opcode::OpCall => todo!(),
-                Opcode::OpReturnValue => todo!(),
-                Opcode::OpReturn => todo!(),
-            }
+                Opcode::OpCall => {
+                    let stack = self.stack.borrow();
+                    let sp = self.sp.borrow();
 
-            ip += 1
+                    let func = stack[*sp - 1].clone();
+                    let frame = Frame::new(func);
+
+                    // push frame
+                    let mut frames = self.frames.borrow_mut();
+                    let mut frame_index = self.frame_index.borrow_mut();
+
+                    if *frame_index >= frames.len() {
+                        frames.push(frame);
+                    } else {
+                        frames[*frame_index] = frame;
+                    }
+                    *frame_index += 1;
+
+                    // update current frame, and sync it to the frames vec
+                    let mut curr_frame_index = self.curr_frame_index.borrow_mut();
+                    frames[*curr_frame_index] = current_frame.clone();
+
+                    current_frame = frames[*curr_frame_index + 1].clone();
+                    *curr_frame_index += 1;
+                }
+                Opcode::OpReturnValue => {
+                    let return_val = self.pop()?;
+
+                    // decrement frame index
+                    let mut frame_index = self.frame_index.borrow_mut();
+                    *frame_index -= 1;
+
+                    // sync current frame to the frames vec
+                    let mut frames = self.frames.borrow_mut();
+                    let mut curr_frame_index = self.curr_frame_index.borrow_mut();
+                    frames[*curr_frame_index] = current_frame.clone();
+
+                    // update current frame
+                    current_frame = frames[*curr_frame_index - 1].clone();
+                    *curr_frame_index -= 1;
+
+                    self.pop()?;
+
+                    self.push(return_val)?;
+                }
+                Opcode::OpReturn => {
+                    // decrement frame index
+                    let mut frame_index = self.frame_index.borrow_mut();
+                    *frame_index -= 1;
+
+                    // sync current frame to the frames vec
+                    let mut frames = self.frames.borrow_mut();
+                    let mut curr_frame_index = self.curr_frame_index.borrow_mut();
+                    frames[*curr_frame_index] = current_frame.clone();
+
+                    // update current frame
+                    current_frame = frames[*curr_frame_index - 1].clone();
+                    *curr_frame_index -= 1;
+
+                    self.pop()?;
+
+                    self.push(Object::Null)?;
+                }
+            }
         }
 
         Ok(())
@@ -382,5 +462,6 @@ pub(super) fn native_to_object(input: bool) -> Object {
     }
 }
 
+pub mod frame;
 #[cfg(test)]
 mod test;
