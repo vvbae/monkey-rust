@@ -105,6 +105,7 @@ pub enum Opcode {
     OpNull,
     OpGetGlobal,
     OpSetGlobal,
+    OpArray,
 }
 
 impl Opcode {
@@ -129,6 +130,7 @@ impl Opcode {
             Opcode::OpNull => vec![],
             Opcode::OpGetGlobal => vec![2],
             Opcode::OpSetGlobal => vec![2],
+            Opcode::OpArray => vec![2],
         }
     }
 
@@ -153,6 +155,7 @@ impl Opcode {
             Opcode::OpNull => 15,
             Opcode::OpGetGlobal => 16,
             Opcode::OpSetGlobal => 17,
+            Opcode::OpArray => 18,
         }
     }
 }
@@ -178,6 +181,7 @@ impl From<&u8> for Opcode {
             15 => Opcode::OpNull,
             16 => Opcode::OpGetGlobal,
             17 => Opcode::OpSetGlobal,
+            18 => Opcode::OpArray,
             _ => todo!(),
         }
     }
@@ -204,6 +208,7 @@ impl Into<String> for Opcode {
             Opcode::OpNull => "OpNull",
             Opcode::OpGetGlobal => "OpGetGlobal",
             Opcode::OpSetGlobal => "OpSetGlobal",
+            Opcode::OpArray => "OpArray",
         }
         .to_string()
     }

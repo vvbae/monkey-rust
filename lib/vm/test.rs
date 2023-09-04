@@ -93,6 +93,59 @@ fn test_conditionals() {
     run_tests(tests);
 }
 
+#[test]
+fn test_global_let_stmts() {
+    let tests = vec![
+        make_testcase("let one = 1; one", Object::Integer(1)),
+        make_testcase("let one = 1; let two = 2; one + two", Object::Integer(3)),
+        make_testcase(
+            "let one = 1; let two = one + one; one + two",
+            Object::Integer(3),
+        ),
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_string_expr() {
+    let tests = vec![
+        make_testcase("\"monkey\"", Object::String("monkey".to_string())),
+        make_testcase("\"mon\" + \"key\"", Object::String("monkey".to_string())),
+        make_testcase(
+            "\"mon\" + \"key\" + \"banana\"",
+            Object::String("monkeybanana".to_string()),
+        ),
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_array_literals() {
+    let tests = vec![
+        make_testcase("[]", Object::Array(vec![])),
+        make_testcase(
+            "[1, 2, 3]",
+            Object::Array(vec![
+                Object::Integer(1),
+                Object::Integer(2),
+                Object::Integer(3),
+            ]),
+        ),
+        make_testcase(
+            "[1 + 2, 3 * 4, 5 + 6]",
+            Object::Array(vec![
+                Object::Integer(3),
+                Object::Integer(12),
+                Object::Integer(11),
+            ]),
+        ),
+    ];
+
+    run_tests(tests);
+}
+
 fn test_int_obj(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => assert_eq!(
@@ -112,6 +165,17 @@ fn test_bool_obj(expected: bool, actual: Object) {
             v, expected
         ),
         _ => panic!("object is not Boolean. got={:?}", actual),
+    }
+}
+
+fn test_string_obj(expected: String, actual: Object) {
+    match actual {
+        Object::String(v) => assert_eq!(
+            expected, v,
+            "object has wrong value. got={:?}, want={:?}",
+            v, expected
+        ),
+        _ => panic!("object is not String. got={:?}", actual),
     }
 }
 
@@ -136,6 +200,16 @@ fn test_expected(expected: Object, actual: &Object) {
     match expected {
         Object::Integer(v) => test_int_obj(v, actual.clone()),
         Object::Boolean(v) => test_bool_obj(v, actual.clone()),
+        Object::String(v) => test_string_obj(v, actual.clone()),
+        Object::Array(arr) => {
+            let result = match actual {
+                Object::Array(v) => v.clone(),
+                _ => unimplemented!(),
+            };
+
+            assert_eq!(arr.len(), result.len());
+            assert_eq!(arr, result);
+        }
         Object::Null => match actual {
             Object::Null => {}
             _ => panic!("object is not Null: {:?} ({:?})", actual, actual),

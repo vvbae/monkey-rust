@@ -1,3 +1,4 @@
+use core::num;
 use std::cell::RefCell;
 
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
 };
 
 const STACK_SIZE: usize = 2048;
+const GLOBAL_SIZE: usize = 65536;
 
 const TRUE: Object = Object::Boolean(true);
 const FALSE: Object = Object::Boolean(false);
@@ -19,6 +21,7 @@ pub struct VM {
     instructions: RefCell<Instructions>,
     stack: RefCell<Vec<Object>>,
     sp: RefCell<usize>,
+    globals: RefCell<Vec<Object>>,
 }
 
 impl VM {
@@ -28,6 +31,7 @@ impl VM {
             instructions: RefCell::new(bytecode.instructions),
             stack: RefCell::new(Vec::with_capacity(STACK_SIZE)),
             sp: RefCell::new(0),
+            globals: RefCell::new(Vec::with_capacity(GLOBAL_SIZE)),
         }
     }
 
@@ -71,8 +75,39 @@ impl VM {
                     ip = pos - 1;
                 }
                 Opcode::OpNull => self.push(NULL)?,
-                Opcode::OpGetGlobal => todo!(),
-                Opcode::OpSetGlobal => todo!(),
+                Opcode::OpGetGlobal => {
+                    let globals = self.globals.borrow();
+                    let global_index = read_u16(&ins[ip + 1..ip + 3]) as usize;
+                    ip += 2;
+
+                    self.push(globals[global_index].clone())?;
+                }
+                Opcode::OpSetGlobal => {
+                    let mut globals = self.globals.borrow_mut();
+                    let global_index = read_u16(&ins[ip + 1..ip + 3]) as usize;
+                    ip += 2;
+
+                    let value = self.pop()?;
+                    if global_index >= globals.len() {
+                        globals.push(value);
+                    } else {
+                        globals[global_index] = value;
+                    }
+                }
+                Opcode::OpArray => {
+                    let array = {
+                        let mut sp = self.sp.borrow_mut();
+                        let num_ele = read_u16(&ins[ip + 1..ip + 3]) as usize;
+                        ip += 2;
+
+                        let array = self.build_array(*sp - num_ele, *sp);
+                        *sp -= num_ele;
+
+                        array
+                    };
+
+                    self.push(array)?;
+                }
             }
 
             ip += 1
@@ -81,20 +116,37 @@ impl VM {
         Ok(())
     }
 
+    fn build_array(&self, start_index: usize, end_index: usize) -> Object {
+        let stack = self.stack.borrow();
+        let mut eles = Vec::with_capacity(end_index - start_index);
+        eles.extend_from_slice(&stack[start_index..end_index]);
+
+        Object::Array(eles)
+    }
+
     fn execute_binary_operation(&self, op: Opcode) -> Result<()> {
         let right = self.pop()?;
         let left = self.pop()?;
 
-        let left_val = match left {
-            Object::Integer(v) => v,
-            _ => todo!(),
-        };
+        let res = match (left, right) {
+            (Object::Integer(l), Object::Integer(r)) => self.execute_binary_int_operation(op, l, r),
+            (Object::String(l), Object::String(r)) => {
+                self.execute_binary_string_operation(op, l, r)
+            }
+            _ => unimplemented!(),
+        }?;
 
-        let right_val = match right {
-            Object::Integer(v) => v,
-            _ => todo!(),
-        };
+        self.push(res)?;
 
+        Ok(())
+    }
+
+    fn execute_binary_int_operation(
+        &self,
+        op: Opcode,
+        left_val: i64,
+        right_val: i64,
+    ) -> Result<Object> {
         let res = match op {
             Opcode::OpAdd => right_val + left_val,
             Opcode::OpSub => left_val - right_val,
@@ -103,9 +155,20 @@ impl VM {
             _ => unimplemented!("Unknown integer operator found: {:?}", op),
         };
 
-        self.push(Object::Integer(res))?;
+        Ok(Object::Integer(res))
+    }
 
-        Ok(())
+    fn execute_binary_string_operation(
+        &self,
+        op: Opcode,
+        left_val: String,
+        right_val: String,
+    ) -> Result<Object> {
+        if op != Opcode::OpAdd {
+            return Err(MonkeyError::UnknownOperator);
+        }
+
+        Ok(Object::String(left_val + &right_val))
     }
 
     fn execute_comparison(&self, op: Opcode) -> Result<()> {
@@ -159,7 +222,7 @@ impl VM {
                 true => self.push(FALSE),
                 false => self.push(TRUE),
             },
-            Object::Null => self.push(NULL),
+            Object::Null => self.push(TRUE),
             _ => self.push(FALSE),
         }?;
 

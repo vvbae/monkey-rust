@@ -6,8 +6,8 @@ use crate::{code::Opcode, evaluator::object::Object};
 pub enum MonkeyError<'a> {
     #[error("Opcode not found: {:?}", .0)]
     OpcodeNotFound(&'a Opcode),
-    #[error("Unknown integer operator: {:?}", .0)]
-    UnknownOperator(&'a Opcode),
+    #[error("Unknown integer operator")]
+    UnknownOperator,
     #[error("Max stack size reached")]
     StackOverflow,
     #[error("Empty stack")]

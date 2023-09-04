@@ -245,6 +245,93 @@ fn test_global_let_stmts() {
     run_tests(tests);
 }
 
+#[test]
+fn test_string_expr() {
+    let tests = vec![
+        TestCase {
+            input: "\"monkey\"".to_string(),
+            expected_constants: vec![Object::String("monkey".to_string())],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: " \"mon\" + \"key\" ".to_string(),
+            expected_constants: vec![
+                Object::String("mon".to_string()),
+                Object::String("key".to_string()),
+            ],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpAdd, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_array_literals() {
+    let tests = vec![
+        TestCase {
+            input: "[]".to_string(),
+            expected_constants: vec![],
+            expected_instructions: vec![
+                make(Opcode::OpArray, Some(vec![0])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "[1, 2, 3]".to_string(),
+            expected_constants: vec![Object::Integer(1), Object::Integer(2), Object::Integer(3)],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpConstant, Some(vec![2])),
+                make(Opcode::OpArray, Some(vec![3])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "[1 + 2, 3 - 4, 5 * 6]".to_string(),
+            expected_constants: vec![
+                Object::Integer(1),
+                Object::Integer(2),
+                Object::Integer(3),
+                Object::Integer(4),
+                Object::Integer(5),
+                Object::Integer(6),
+            ],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpAdd, None),
+                make(Opcode::OpConstant, Some(vec![2])),
+                make(Opcode::OpConstant, Some(vec![3])),
+                make(Opcode::OpSub, None),
+                make(Opcode::OpConstant, Some(vec![4])),
+                make(Opcode::OpConstant, Some(vec![5])),
+                make(Opcode::OpMul, None),
+                make(Opcode::OpArray, Some(vec![3])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+    ];
+
+    run_tests(tests);
+}
+
+fn test_string_object(expected: String, actual: Object) {
+    match actual {
+        Object::String(v) => assert_eq!(expected, v),
+        _ => panic!("object is not String. got={:?}", actual),
+    }
+}
+
 fn test_int_object(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => assert_eq!(expected, v),
@@ -263,7 +350,7 @@ fn test_constants(expected: Vec<Object>, actual: Vec<Object>) {
         match constant {
             Object::Integer(v) => test_int_object(*v, actual[i].clone()),
             Object::Boolean(_) => todo!(),
-            Object::String(_) => todo!(),
+            Object::String(v) => test_string_object(v.to_string(), actual[i].clone()),
             Object::Array(_) => todo!(),
             Object::Hash(_) => todo!(),
             Object::Function(_, _, _) => todo!(),

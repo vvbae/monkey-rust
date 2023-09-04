@@ -179,8 +179,13 @@ impl Compiler {
         todo!()
     }
 
-    pub fn compile_array(&self, exprs: Vec<Expr>) {
-        todo!()
+    pub fn compile_array(&mut self, exprs: Vec<Expr>) {
+        let len = exprs.len();
+        for expr in exprs {
+            self.compile_expr(expr)
+        }
+
+        self.emit(Opcode::OpArray, Some(vec![len as u16]));
     }
 
     pub fn compile_hash(&self, hash_exprs: Vec<(Literal, Expr)>) {
