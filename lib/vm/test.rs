@@ -176,6 +176,24 @@ fn test_hash_literals() {
     run_tests(tests);
 }
 
+#[test]
+fn test_index_expr() {
+    let tests = vec![
+        make_testcase("[1, 2, 3][1]", Object::Integer(2)),
+        make_testcase("[1, 2, 3][0 + 2]", Object::Integer(3)),
+        make_testcase("[[1, 1, 1]][0][0]", Object::Integer(1)),
+        make_testcase("[][0]", Object::Null),
+        make_testcase("[1, 2, 3][99]", Object::Null),
+        make_testcase("[1][-1]", Object::Null),
+        make_testcase("{1: 1, 2: 2}[1]", Object::Integer(1)),
+        make_testcase("{1: 1, 2: 2}[2]", Object::Integer(2)),
+        make_testcase("{1: 1}[0]", Object::Null),
+        make_testcase("{}[0]", Object::Null),
+    ];
+
+    run_tests(tests);
+}
+
 fn test_int_obj(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => {

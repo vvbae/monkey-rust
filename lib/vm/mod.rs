@@ -1,4 +1,3 @@
-use core::num;
 use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
@@ -122,6 +121,12 @@ impl VM {
                     };
 
                     self.push(hashmap)?;
+                }
+                Opcode::OpIndex => {
+                    let index = self.pop()?;
+                    let left = self.pop()?;
+
+                    self.execute_index_expr(&left, &index)?;
                 }
             }
 
@@ -266,6 +271,41 @@ impl VM {
             Object::Integer(v) => self.push(Object::Integer(-v)),
             _ => Err(MonkeyError::UnsupportedType(operand)),
         }?;
+
+        Ok(())
+    }
+
+    fn execute_index_expr(&self, left: &Object, index: &Object) -> Result<()> {
+        match (left, index) {
+            (Object::Array(array), Object::Integer(id)) => {
+                self.execute_array_index(array.to_vec(), *id)
+            }
+            (Object::Hash(map), Object::Integer(_) | Object::String(_)) => {
+                self.execute_hash_index(map.clone(), index)
+            }
+            _ => unimplemented!("index operator not supported: {:?}", left),
+        }?;
+
+        Ok(())
+    }
+
+    fn execute_array_index(&self, array: Vec<Object>, index: i64) -> Result<()> {
+        let max = array.len() as i64 - 1;
+
+        if index < 0 || index > max as i64 {
+            return self.push(NULL);
+        }
+
+        self.push(array[index as usize].clone())?;
+
+        Ok(())
+    }
+
+    fn execute_hash_index(&self, map: HashMap<Object, Object>, index: &Object) -> Result<()> {
+        let key = oth(index.clone());
+        let val = map.get(&key).unwrap_or(&Object::Null);
+
+        self.push(val.clone())?;
 
         Ok(())
     }

@@ -385,6 +385,54 @@ fn test_hash_literals() {
     run_tests(tests);
 }
 
+#[test]
+fn test_index_expr() {
+    let tests = vec![
+        TestCase {
+            input: "[1, 2, 3][1 + 1]".to_string(),
+            expected_constants: vec![
+                Object::Integer(1),
+                Object::Integer(2),
+                Object::Integer(3),
+                Object::Integer(1),
+                Object::Integer(1),
+            ],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpConstant, Some(vec![2])),
+                make(Opcode::OpArray, Some(vec![3])),
+                make(Opcode::OpConstant, Some(vec![3])),
+                make(Opcode::OpConstant, Some(vec![4])),
+                make(Opcode::OpAdd, None),
+                make(Opcode::OpIndex, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "{1: 2}[2 - 1]".to_string(),
+            expected_constants: vec![
+                Object::Integer(1),
+                Object::Integer(2),
+                Object::Integer(2),
+                Object::Integer(1),
+            ],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpHash, Some(vec![2])),
+                make(Opcode::OpConstant, Some(vec![2])),
+                make(Opcode::OpConstant, Some(vec![3])),
+                make(Opcode::OpSub, None),
+                make(Opcode::OpIndex, None),
+                make(Opcode::OpPop, None),
+            ],
+        },
+    ];
+
+    run_tests(tests);
+}
+
 fn test_string_object(expected: String, actual: Object) {
     match actual {
         Object::String(v) => assert_eq!(expected, v),

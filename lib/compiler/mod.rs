@@ -199,8 +199,10 @@ impl Compiler {
         self.emit(Opcode::OpHash, Some(vec![len * 2]));
     }
 
-    pub fn compile_index(&self, array: Expr, index: Expr) {
-        todo!()
+    pub fn compile_index(&mut self, array: Expr, index: Expr) {
+        self.compile_expr(array);
+        self.compile_expr(index);
+        self.emit(Opcode::OpIndex, None);
     }
 
     /// Append obj to constants, return its index as identifier for the OpConstant instruction
