@@ -1,4 +1,10 @@
-use crate::{common::parse, compiler::Compiler, evaluator::object::Object};
+use std::{collections::HashMap, hash};
+
+use crate::{
+    common::{oth, parse},
+    compiler::Compiler,
+    evaluator::object::Object,
+};
 
 use super::*;
 
@@ -146,13 +152,39 @@ fn test_array_literals() {
     run_tests(tests);
 }
 
+#[test]
+fn test_hash_literals() {
+    let tests = vec![
+        make_testcase("{}", Object::Hash(HashMap::new())),
+        make_testcase(
+            "{1: 2, 2: 3}",
+            Object::Hash(HashMap::from([
+                (oth(Object::Integer(1)), Object::Integer(2)),
+                (oth(Object::Integer(2)), Object::Integer(3)),
+            ])),
+        ),
+        // parsing error
+        // make_testcase(
+        //     "{1 + 1: 2 * 2, 3 + 3: 4 * 4}",
+        //     Object::Hash(HashMap::from([
+        //         (oth(Object::Integer(2)), Object::Integer(4)),
+        //         (oth(Object::Integer(6)), Object::Integer(16)),
+        //     ])),
+        // ),
+    ];
+
+    run_tests(tests);
+}
+
 fn test_int_obj(expected: i64, actual: Object) {
     match actual {
-        Object::Integer(v) => assert_eq!(
-            expected, v,
-            "object has wrong value. got={:?}, want={:?}",
-            v, expected
-        ),
+        Object::Integer(v) => {
+            assert_eq!(
+                expected, v,
+                "object has wrong value. got={:?}, want={:?}",
+                v, expected
+            )
+        }
         _ => panic!("object is not Integer. got={:?}", actual),
     }
 }
@@ -209,6 +241,18 @@ fn test_expected(expected: Object, actual: &Object) {
 
             assert_eq!(arr.len(), result.len());
             assert_eq!(arr, result);
+        }
+        Object::Hash(hashmap) => {
+            println!("{:?}", hashmap);
+            let expected_pairs = hashmap.into_iter().collect::<Vec<_>>();
+            match actual {
+                Object::Hash(map) => {
+                    for (key, val) in expected_pairs {
+                        assert_eq!(val, map[&key])
+                    }
+                }
+                _ => unimplemented!(),
+            }
         }
         Object::Null => match actual {
             Object::Null => {}

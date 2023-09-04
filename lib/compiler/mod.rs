@@ -188,8 +188,15 @@ impl Compiler {
         self.emit(Opcode::OpArray, Some(vec![len as u16]));
     }
 
-    pub fn compile_hash(&self, hash_exprs: Vec<(Literal, Expr)>) {
-        todo!()
+    pub fn compile_hash(&mut self, hash_exprs: Vec<(Literal, Expr)>) {
+        // TODO: need to find a way to sort so tests wont break
+        let len = hash_exprs.len() as u16;
+        for (lit, key) in hash_exprs {
+            self.compile_literal(lit);
+            self.compile_expr(key);
+        }
+
+        self.emit(Opcode::OpHash, Some(vec![len * 2]));
     }
 
     pub fn compile_index(&self, array: Expr, index: Expr) {

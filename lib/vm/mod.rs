@@ -1,8 +1,9 @@
 use core::num;
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
     code::{read_u16, Instructions, Opcode},
+    common::oth,
     compiler::Bytecode,
     error::MonkeyError,
     error::Result,
@@ -108,6 +109,20 @@ impl VM {
 
                     self.push(array)?;
                 }
+                Opcode::OpHash => {
+                    let hashmap = {
+                        let mut sp = self.sp.borrow_mut();
+                        let num_ele = read_u16(&ins[ip + 1..ip + 3]) as usize;
+                        ip += 2;
+
+                        let hash = self.build_hash(*sp - num_ele, *sp);
+                        *sp -= num_ele;
+
+                        hash
+                    };
+
+                    self.push(hashmap)?;
+                }
             }
 
             ip += 1
@@ -122,6 +137,21 @@ impl VM {
         eles.extend_from_slice(&stack[start_index..end_index]);
 
         Object::Array(eles)
+    }
+
+    fn build_hash(&self, start_index: usize, end_index: usize) -> Object {
+        let mut hashed_pairs = HashMap::new();
+        let stack = self.stack.borrow();
+
+        for i in (start_index..end_index).step_by(2) {
+            let key = stack[i].clone();
+            let val = stack[i + 1].clone();
+
+            let hash_key = oth(key.clone());
+            hashed_pairs.insert(hash_key, val);
+        }
+
+        Object::Hash(hashed_pairs)
     }
 
     fn execute_binary_operation(&self, op: Opcode) -> Result<()> {
