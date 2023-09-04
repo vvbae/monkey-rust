@@ -108,6 +108,9 @@ pub enum Opcode {
     OpArray,
     OpHash,
     OpIndex,
+    OpCall,
+    OpReturnValue,
+    OpReturn,
 }
 
 impl Opcode {
@@ -135,6 +138,9 @@ impl Opcode {
             Opcode::OpArray => vec![2],
             Opcode::OpHash => vec![2],
             Opcode::OpIndex => vec![],
+            Opcode::OpCall => vec![],
+            Opcode::OpReturnValue => vec![],
+            Opcode::OpReturn => vec![],
         }
     }
 
@@ -162,6 +168,9 @@ impl Opcode {
             Opcode::OpArray => 18,
             Opcode::OpHash => 19,
             Opcode::OpIndex => 20,
+            Opcode::OpCall => 21,
+            Opcode::OpReturnValue => 22,
+            Opcode::OpReturn => 23,
         }
     }
 }
@@ -190,6 +199,9 @@ impl From<&u8> for Opcode {
             18 => Opcode::OpArray,
             19 => Opcode::OpHash,
             20 => Opcode::OpIndex,
+            21 => Opcode::OpCall,
+            22 => Opcode::OpReturnValue,
+            23 => Opcode::OpReturn,
             _ => todo!(),
         }
     }
@@ -219,6 +231,9 @@ impl Into<String> for Opcode {
             Opcode::OpArray => "OpArray",
             Opcode::OpHash => "OpHash",
             Opcode::OpIndex => "OpIndex",
+            Opcode::OpCall => "OpCall",
+            Opcode::OpReturnValue => "OpReturnValue",
+            Opcode::OpReturn => "OpReturn",
         }
         .to_string()
     }

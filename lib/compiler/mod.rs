@@ -6,24 +6,32 @@ use crate::{
 
 use self::symbol_table::SymbolTable;
 
-pub struct Compiler {
+pub struct CompilationScope {
     instructions: Instructions,
-    constants: Vec<Object>,
-
     last_ins: Option<EmittedInstruction>,
     prev_ins: Option<EmittedInstruction>,
+}
 
+pub struct Compiler {
+    constants: Vec<Object>,
     symbol_table: SymbolTable,
+    scopes: Vec<CompilationScope>,
+    scope_index: usize,
 }
 
 impl Compiler {
     pub fn new() -> Self {
-        Self {
-            instructions: Instructions::new(),
-            constants: Vec::new(),
+        let main_scope = CompilationScope {
+            instructions: Vec::new(),
             last_ins: None,
             prev_ins: None,
+        };
+
+        Self {
+            constants: Vec::new(),
             symbol_table: SymbolTable::new(),
+            scopes: vec![main_scope],
+            scope_index: 0,
         }
     }
 
@@ -44,7 +52,10 @@ impl Compiler {
                 let symbol = self.symbol_table.define(ident.0);
                 self.emit(Opcode::OpSetGlobal, Some(vec![symbol.index]));
             }
-            Stmt::ReturnStmt(expr) => self.compile_expr(expr),
+            Stmt::ReturnStmt(expr) => {
+                self.compile_expr(expr);
+                self.emit(Opcode::OpReturnValue, None);
+            }
         };
     }
 
@@ -146,13 +157,13 @@ impl Compiler {
             self.compile_statement(stmt);
         }
 
-        if self.last_ins_is_pop() {
+        if self.last_ins_is(Opcode::OpPop) {
             self.remove_last_pop()
         }
 
         let jump_index = self.emit(Opcode::OpJump, Some(vec![9999])); // else => jump to the end of if-else block
 
-        let after_conseq_pos = self.instructions.len();
+        let after_conseq_pos = self.current_ins().len();
         self.change_operand(jump_not_truthy_index, after_conseq_pos as u16);
 
         if alternative == None {
@@ -162,21 +173,44 @@ impl Compiler {
                 self.compile_statement(stmt)
             }
 
-            if self.last_ins_is_pop() {
+            if self.last_ins_is(Opcode::OpPop) {
                 self.remove_last_pop()
             }
         }
 
-        let after_alter_pos = self.instructions.len();
+        let after_alter_pos = self.current_ins().len();
         self.change_operand(jump_index, after_alter_pos as u16);
     }
 
-    pub fn compile_fn(&self, params: Vec<Ident>, body: Vec<Stmt>) {
-        todo!()
+    pub fn compile_fn(&mut self, params: Vec<Ident>, body: Vec<Stmt>) {
+        self.enter_scope();
+
+        for stmt in body {
+            self.compile_statement(stmt);
+        }
+
+        if self.last_ins_is(Opcode::OpPop) {
+            self.replace_last_pop_with_return();
+        }
+
+        if !self.last_ins_is(Opcode::OpReturnValue) {
+            self.emit(Opcode::OpReturn, None);
+        }
+
+        let ins = self.leave_scope();
+
+        let compiled_fn = Object::CompiledFn(ins, 0, 0);
+        let const_index = self.register_constant(&compiled_fn) as u16;
+        self.emit(Opcode::OpConstant, Some(vec![const_index]));
     }
 
-    pub fn compile_call(&self, fn_exp: Expr, arg: Vec<Expr>) {
-        todo!()
+    pub fn compile_call(&mut self, fn_exp: Expr, args: Vec<Expr>) {
+        self.compile_expr(fn_exp);
+        for arg in args {
+            self.compile_expr(arg);
+        }
+
+        self.emit(Opcode::OpCall, None);
     }
 
     pub fn compile_array(&mut self, exprs: Vec<Expr>) {
@@ -222,49 +256,100 @@ impl Compiler {
     }
 
     fn set_last_instruction(&mut self, op: Opcode, pos: usize) {
-        let prev = match self.last_ins {
+        let prev = match self.scopes[self.scope_index].last_ins {
             Some(ins) => Some(ins),
             None => None,
         };
 
         let last = EmittedInstruction::new(op, pos);
 
-        self.prev_ins = prev;
-        self.last_ins = Some(last);
+        self.scopes[self.scope_index].prev_ins = prev;
+        self.scopes[self.scope_index].last_ins = Some(last);
     }
 
     /// Add the new instruction to memory, return its position
-    fn add_instruction(&mut self, mut ins: Vec<u8>) -> usize {
-        let pos_new_ins = self.instructions.len();
-        self.instructions.append(&mut ins);
+    fn add_instruction(&mut self, ins: Vec<u8>) -> usize {
+        let mut curr_ins = self.current_ins().clone();
+        let pos_new_ins = curr_ins.len();
+        curr_ins.extend(ins);
+
+        self.scopes[self.scope_index].instructions = curr_ins;
+
         pos_new_ins
     }
 
-    fn last_ins_is_pop(&self) -> bool {
-        self.last_ins.unwrap().opcode == Opcode::OpPop
+    fn last_ins_is(&self, op: Opcode) -> bool {
+        if self.current_ins().len() == 0 {
+            return false;
+        }
+
+        self.scopes[self.scope_index].last_ins.unwrap().opcode == op
     }
 
     /// Remove last instruction, previous instruction becomes the last
     fn remove_last_pop(&mut self) {
-        self.instructions.pop();
-        self.last_ins = self.prev_ins;
+        let last = self.scopes[self.scope_index].last_ins.unwrap();
+        let prev = self.scopes[self.scope_index].prev_ins.unwrap();
+
+        let old = self.current_ins().clone();
+        let new = &old[..last.position];
+
+        self.scopes[self.scope_index].instructions = new.to_vec();
+        self.scopes[self.scope_index].last_ins = Some(prev);
     }
 
     fn replace_ins(&mut self, pos: usize, new_ins: Vec<u8>) {
-        self.instructions[pos..pos + new_ins.len()].copy_from_slice(&new_ins);
+        let mut ins = self.current_ins().clone();
+        ins[pos..pos + new_ins.len()].copy_from_slice(&new_ins);
+        self.scopes[self.scope_index].instructions = ins;
+    }
+
+    fn replace_last_pop_with_return(&mut self) {
+        let last_pos = self.scopes[self.scope_index].last_ins.unwrap().position;
+        self.replace_ins(last_pos, make(Opcode::OpReturnValue, None));
+
+        let old = self.scopes[self.scope_index].last_ins.unwrap().position;
+        self.scopes[self.scope_index].last_ins = Some(EmittedInstruction {
+            opcode: Opcode::OpReturnValue,
+            position: old,
+        })
     }
 
     /// Update the instruction at index op_pos with operand
     fn change_operand(&mut self, op_pos: usize, operand: u16) {
-        let op = Opcode::from(&self.instructions[op_pos]);
+        let op = Opcode::from(&self.current_ins()[op_pos]);
         let new_ins = make(op, Some(vec![operand]));
 
         self.replace_ins(op_pos, new_ins);
     }
 
+    fn current_ins(&self) -> &Instructions {
+        &self.scopes[self.scope_index].instructions
+    }
+
+    pub fn enter_scope(&mut self) {
+        let scope = CompilationScope {
+            instructions: Vec::new(),
+            last_ins: None,
+            prev_ins: None,
+        };
+
+        self.scopes.push(scope);
+        self.scope_index += 1;
+    }
+
+    pub fn leave_scope(&mut self) -> Instructions {
+        let ins = self.current_ins().clone();
+
+        self.scopes.pop();
+        self.scope_index -= 1;
+
+        ins
+    }
+
     pub fn bytecode(&self) -> Bytecode {
         Bytecode {
-            instructions: self.instructions.clone(),
+            instructions: self.current_ins().clone(),
             constants: self.constants.clone(),
         }
     }

@@ -1,3 +1,4 @@
+use crate::code::Instructions;
 use crate::evaluator::environment::*;
 use crate::parser::ast::*;
 use std::cell::RefCell;
@@ -17,6 +18,7 @@ pub enum Object {
     Builtin(String, usize, BuiltinFunction),
     Null,
     ReturnValue(Box<Object>),
+    CompiledFn(Instructions, u8, u8),
     Error(String),
 }
 
@@ -76,6 +78,7 @@ impl fmt::Display for Object {
             Object::Null => write!(f, "null"),
             Object::ReturnValue(ref o) => write!(f, "{}", *o),
             Object::Error(ref s) => write!(f, "Error: {}", s),
+            Object::CompiledFn(_, _, _) => write!(f, "[compiled function]"),
         }
     }
 }

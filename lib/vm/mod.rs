@@ -128,6 +128,9 @@ impl VM {
 
                     self.execute_index_expr(&left, &index)?;
                 }
+                Opcode::OpCall => todo!(),
+                Opcode::OpReturnValue => todo!(),
+                Opcode::OpReturn => todo!(),
             }
 
             ip += 1
@@ -280,9 +283,7 @@ impl VM {
             (Object::Array(array), Object::Integer(id)) => {
                 self.execute_array_index(array.to_vec(), *id)
             }
-            (Object::Hash(map), Object::Integer(_) | Object::String(_)) => {
-                self.execute_hash_index(map.clone(), index)
-            }
+            (Object::Hash(map), _) => self.execute_hash_index(map.clone(), index),
             _ => unimplemented!("index operator not supported: {:?}", left),
         }?;
 
