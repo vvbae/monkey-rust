@@ -1,10 +1,12 @@
+use std::{cell::RefCell, rc::Rc, vec};
+
 use crate::{
     code::{make, Instructions, Opcode},
     evaluator::object::Object,
     parser::ast::{Expr, Ident, Infix, Literal, Prefix, Program, Stmt},
 };
 
-use self::symbol_table::SymbolTable;
+use self::symbol_table::{SymbolScope, SymbolTable};
 
 pub struct CompilationScope {
     instructions: Instructions,
@@ -14,7 +16,7 @@ pub struct CompilationScope {
 
 pub struct Compiler {
     constants: Vec<Object>,
-    symbol_table: SymbolTable,
+    symbol_table: Rc<RefCell<SymbolTable>>,
     scopes: Vec<CompilationScope>,
     scope_index: usize,
 }
@@ -29,7 +31,7 @@ impl Compiler {
 
         Self {
             constants: Vec::new(),
-            symbol_table: SymbolTable::new(),
+            symbol_table: Rc::new(RefCell::new(SymbolTable::new())),
             scopes: vec![main_scope],
             scope_index: 0,
         }
@@ -49,8 +51,12 @@ impl Compiler {
             }
             Stmt::LetStmt(ident, expr) => {
                 self.compile_expr(expr);
-                let symbol = self.symbol_table.define(ident.0);
-                self.emit(Opcode::OpSetGlobal, Some(vec![symbol.index]));
+                let symbol = self.symbol_table.borrow_mut().define(ident.0);
+
+                match symbol.scope {
+                    SymbolScope::GLOBAL => self.emit(Opcode::OpSetGlobal, Some(vec![symbol.index])),
+                    SymbolScope::LOCAL => self.emit(Opcode::OpSetLocal, Some(vec![symbol.index])),
+                };
             }
             Stmt::ReturnStmt(expr) => {
                 self.compile_expr(expr);
@@ -82,8 +88,11 @@ impl Compiler {
     }
 
     pub fn compile_ident(&mut self, ident: Ident) {
-        let symbol = self.symbol_table.resolve(ident.0).unwrap();
-        self.emit(Opcode::OpGetGlobal, Some(vec![symbol.index]));
+        let symbol = self.symbol_table.borrow().resolve(ident.0).unwrap();
+        match symbol.scope {
+            SymbolScope::GLOBAL => self.emit(Opcode::OpGetGlobal, Some(vec![symbol.index])),
+            SymbolScope::LOCAL => self.emit(Opcode::OpGetLocal, Some(vec![symbol.index])),
+        };
     }
 
     pub fn compile_literal(&mut self, lit: Literal) {
@@ -336,6 +345,9 @@ impl Compiler {
 
         self.scopes.push(scope);
         self.scope_index += 1;
+        self.symbol_table = Rc::new(RefCell::new(SymbolTable::new_enclosed(Rc::clone(
+            &self.symbol_table,
+        ))));
     }
 
     pub fn leave_scope(&mut self) -> Instructions {
@@ -343,6 +355,10 @@ impl Compiler {
 
         self.scopes.pop();
         self.scope_index -= 1;
+
+        if let Some(paren) = self.symbol_table.take().outer {
+            self.symbol_table = Rc::clone(&paren);
+        }
 
         ins
     }

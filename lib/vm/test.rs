@@ -230,6 +230,18 @@ fn test_call_fn_without_return_val() {
     run_tests(tests);
 }
 
+#[test]
+fn test_first_class_func() {
+    let tests = vec![make_testcase(
+        " let returnsOne = fn() { 1; };
+        let returnsOneReturner = fn() { returnsOne; };
+        returnsOneReturner()();",
+        Object::Integer(1),
+    )];
+
+    run_tests(tests);
+}
+
 fn test_int_obj(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => {

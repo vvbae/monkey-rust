@@ -618,6 +618,80 @@ fn test_compilation_scopes() {
     assert_eq!(prev_ins.unwrap().opcode, Opcode::OpMul);
 }
 
+#[test]
+fn test_let_stmt_scopes() {
+    let tests = vec![
+        TestCase {
+            input: "let num = 55;
+                    fn() {
+                        num
+                    }"
+            .to_string(),
+            expected_constants: vec![
+                Constant::Object(Object::Integer(55)),
+                Constant::Instructions(vec![
+                    make(Opcode::OpGetGlobal, Some(vec![0])),
+                    make(Opcode::OpReturnValue, None),
+                ]),
+            ],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "
+            fn() {
+                let num = 55;
+                num
+            }"
+            .to_string(),
+            expected_constants: vec![
+                Constant::Object(Object::Integer(55)),
+                Constant::Instructions(vec![
+                    make(Opcode::OpConstant, Some(vec![0])),
+                    make(Opcode::OpSetLocal, Some(vec![0])),
+                    make(Opcode::OpGetLocal, Some(vec![0])),
+                    make(Opcode::OpReturnValue, None),
+                ]),
+            ],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![1])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "fn() {
+                    let a = 55;
+        let b = 77;
+        a+b }"
+                .to_string(),
+            expected_constants: vec![
+                Constant::Object(Object::Integer(55)),
+                Constant::Object(Object::Integer(77)),
+                Constant::Instructions(vec![
+                    make(Opcode::OpConstant, Some(vec![0])),
+                    make(Opcode::OpSetLocal, Some(vec![0])),
+                    make(Opcode::OpConstant, Some(vec![1])),
+                    make(Opcode::OpSetLocal, Some(vec![1])),
+                    make(Opcode::OpGetLocal, Some(vec![0])),
+                    make(Opcode::OpGetLocal, Some(vec![1])),
+                    make(Opcode::OpAdd, None),
+                    make(Opcode::OpReturnValue, None),
+                ]),
+            ],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![2])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+    ];
+
+    run_tests(tests);
+}
+
 fn test_string_object(expected: String, actual: Object) {
     match actual {
         Object::String(v) => assert_eq!(expected, v),

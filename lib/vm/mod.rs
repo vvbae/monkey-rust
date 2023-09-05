@@ -213,6 +213,8 @@ impl VM {
 
                     self.push(Object::Null)?;
                 }
+                Opcode::OpGetLocal => todo!(),
+                Opcode::OpSetLocal => todo!(),
             }
         }
 

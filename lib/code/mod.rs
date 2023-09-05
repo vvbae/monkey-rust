@@ -17,6 +17,7 @@ pub fn make(op: Opcode, operands: Option<Vec<u16>>) -> Instructions {
         let width = widths[i];
         match width {
             2 => instructions[offset..offset + 2].copy_from_slice(&o.to_be_bytes()),
+            1 => instructions[offset] = (o & 0xFF) as u8, // truncate the upper 8 bits
             _ => todo!(),
         }
         offset += width as usize;
@@ -71,6 +72,7 @@ pub fn read_operands(widths: &[u8], ins: Instructions) -> (Vec<u16>, u8) {
     for (i, width) in widths.iter().enumerate() {
         match width {
             2 => operands[i] = read_u16(&ins[offset..offset + 2]),
+            1 => operands[i] = read_u8(&ins[offset]) as u16,
             _ => todo!(),
         }
 
@@ -83,6 +85,11 @@ pub fn read_operands(widths: &[u8], ins: Instructions) -> (Vec<u16>, u8) {
 /// Read u16 from instruction
 pub fn read_u16(ins: &[u8]) -> u16 {
     BigEndian::read_u16(&ins)
+}
+
+/// Read u8 from instruction
+pub fn read_u8(ins: &u8) -> u8 {
+    *ins
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -111,6 +118,8 @@ pub enum Opcode {
     OpCall,
     OpReturnValue,
     OpReturn,
+    OpGetLocal,
+    OpSetLocal,
 }
 
 impl Opcode {
@@ -141,6 +150,8 @@ impl Opcode {
             Opcode::OpCall => vec![],
             Opcode::OpReturnValue => vec![],
             Opcode::OpReturn => vec![],
+            Opcode::OpGetLocal => vec![1],
+            Opcode::OpSetLocal => vec![1],
         }
     }
 
@@ -171,6 +182,8 @@ impl Opcode {
             Opcode::OpCall => 21,
             Opcode::OpReturnValue => 22,
             Opcode::OpReturn => 23,
+            Opcode::OpGetLocal => 24,
+            Opcode::OpSetLocal => 25,
         }
     }
 }
@@ -202,6 +215,8 @@ impl From<&u8> for Opcode {
             21 => Opcode::OpCall,
             22 => Opcode::OpReturnValue,
             23 => Opcode::OpReturn,
+            24 => Opcode::OpGetLocal,
+            25 => Opcode::OpSetLocal,
             _ => todo!(),
         }
     }
@@ -234,6 +249,8 @@ impl Into<String> for Opcode {
             Opcode::OpCall => "OpCall",
             Opcode::OpReturnValue => "OpReturnValue",
             Opcode::OpReturn => "OpReturn",
+            Opcode::OpGetLocal => "OpGetLocal",
+            Opcode::OpSetLocal => "OpSetLocal",
         }
         .to_string()
     }
