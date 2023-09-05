@@ -46,7 +46,7 @@ impl VM {
             constants: bytecode.constants,
             stack: RefCell::new(vec![Object::Null; STACK_SIZE]),
             sp: RefCell::new(0),
-            globals: RefCell::new(Vec::with_capacity(GLOBAL_SIZE)),
+            globals: RefCell::new(vec![Object::Null; GLOBAL_SIZE]),
             frames: RefCell::new(frames),
             frame_index: RefCell::new(1),
             curr_frame: RefCell::new(main_frame),
@@ -109,11 +109,7 @@ impl VM {
                     current_frame.ip += 2;
 
                     let value = self.pop()?;
-                    if global_index >= globals.len() {
-                        globals.push(value);
-                    } else {
-                        globals[global_index] = value;
-                    }
+                    globals[global_index] = value;
                 }
                 Opcode::OpArray => {
                     let array = {
@@ -461,13 +457,7 @@ impl VM {
             return Err(MonkeyError::StackOverflow);
         }
 
-        // FIXME: maybe change declaration to fill capacity
-        // if *sp >= stack.len() {
-        //     stack.push(obj);
-        // } else {
         stack[*sp] = obj;
-        // }
-
         *sp += 1;
 
         Ok(())
