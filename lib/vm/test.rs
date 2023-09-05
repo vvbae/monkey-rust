@@ -242,6 +242,49 @@ fn test_first_class_func() {
     run_tests(tests);
 }
 
+#[test]
+fn test_call_fn_with_bindings() {
+    let tests = vec![
+        make_testcase(
+            "let one = fn() { let one = 1; one };
+            one();",
+            Object::Integer(1),
+        ),
+        make_testcase(
+            "let oneAndTwo = fn() { let one = 1; let two = 2; one + two; };
+            oneAndTwo();",
+            Object::Integer(3),
+        ),
+        make_testcase(
+            "let oneAndTwo = fn() { let one = 1; let two = 2; one + two; };
+            let threeAndFour = fn() { let three = 3; let four = 4; three + four; };
+            oneAndTwo() + threeAndFour();",
+            Object::Integer(10),
+        ),
+        make_testcase(
+            " let firstFoobar = fn() { let foobar = 50; foobar; };
+            let secondFoobar = fn() { let foobar = 100; foobar; };
+            firstFoobar() + secondFoobar();",
+            Object::Integer(150),
+        ),
+        make_testcase(
+            "let globalSeed = 50;
+            let minusOne = fn() {
+                let num = 1;
+                globalSeed - num;
+            }
+            let minusTwo = fn() {
+                let num = 2;
+                globalSeed - num;
+            }
+            minusOne() + minusTwo();",
+            Object::Integer(97),
+        ),
+    ];
+
+    run_tests(tests);
+}
+
 fn test_int_obj(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => {

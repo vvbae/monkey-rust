@@ -23,7 +23,7 @@ impl Symbol {
 pub struct SymbolTable {
     pub outer: Option<Rc<RefCell<SymbolTable>>>,
     store: HashMap<String, Symbol>,
-    num_defs: u16,
+    pub num_defs: u16,
 }
 
 impl SymbolTable {

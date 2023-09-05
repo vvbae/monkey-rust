@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
-    code::{read_u16, Opcode},
+    code::{read_u16, read_u8, Opcode},
     common::oth,
     compiler::Bytecode,
     error::MonkeyError,
@@ -37,7 +37,7 @@ pub struct VM {
 impl VM {
     pub fn new(bytecode: Bytecode) -> Self {
         let main_fn = Object::CompiledFn(bytecode.instructions.clone(), 0, 0);
-        let main_frame = Frame::new(main_fn);
+        let main_frame = Frame::new(main_fn, 0);
 
         let mut frames = Vec::with_capacity(MAX_FRAMES);
         frames.push(main_frame.clone());
@@ -152,10 +152,11 @@ impl VM {
                 }
                 Opcode::OpCall => {
                     let stack = self.stack.borrow();
-                    let sp = self.sp.borrow();
+                    let mut sp = self.sp.borrow_mut();
 
                     let func = stack[*sp - 1].clone();
-                    let frame = Frame::new(func);
+                    let frame = Frame::new(func.clone(), *sp);
+                    let base_pointer = frame.base_pointer;
 
                     // push frame
                     let mut frames = self.frames.borrow_mut();
@@ -168,6 +169,11 @@ impl VM {
                     }
                     *frame_index += 1;
 
+                    // starting point is base_pointer, and reserve for locals
+                    if let Object::CompiledFn(_, num_locals, _) = func {
+                        *sp = base_pointer + num_locals as usize
+                    }
+
                     // update current frame, and sync it to the frames vec
                     let mut curr_frame_index = self.curr_frame_index.borrow_mut();
                     frames[*curr_frame_index] = current_frame.clone();
@@ -175,8 +181,12 @@ impl VM {
                     current_frame = frames[*curr_frame_index + 1].clone();
                     *curr_frame_index += 1;
                 }
-                Opcode::OpReturnValue => {
-                    let return_val = self.pop()?;
+                Opcode::OpReturnValue | Opcode::OpReturn => {
+                    let return_val = match op {
+                        Opcode::OpReturnValue => self.pop()?,
+                        Opcode::OpReturn => Object::Null,
+                        _ => unimplemented!(),
+                    };
 
                     // decrement frame index
                     let mut frame_index = self.frame_index.borrow_mut();
@@ -187,34 +197,38 @@ impl VM {
                     let mut curr_frame_index = self.curr_frame_index.borrow_mut();
                     frames[*curr_frame_index] = current_frame.clone();
 
+                    // reset stack pointer after return
+                    {
+                        let mut sp = self.sp.borrow_mut();
+                        *sp = current_frame.base_pointer - 1;
+                    }
+
                     // update current frame
                     current_frame = frames[*curr_frame_index - 1].clone();
                     *curr_frame_index -= 1;
-
-                    self.pop()?;
 
                     self.push(return_val)?;
                 }
-                Opcode::OpReturn => {
-                    // decrement frame index
-                    let mut frame_index = self.frame_index.borrow_mut();
-                    *frame_index -= 1;
+                Opcode::OpGetLocal => {
+                    let local_index = read_u8(&ins[ip + 1]);
+                    current_frame.ip += 1;
 
-                    // sync current frame to the frames vec
-                    let mut frames = self.frames.borrow_mut();
-                    let mut curr_frame_index = self.curr_frame_index.borrow_mut();
-                    frames[*curr_frame_index] = current_frame.clone();
+                    let local_val = {
+                        let stack = self.stack.borrow();
+                        stack[current_frame.base_pointer + local_index as usize].clone()
+                    };
 
-                    // update current frame
-                    current_frame = frames[*curr_frame_index - 1].clone();
-                    *curr_frame_index -= 1;
-
-                    self.pop()?;
-
-                    self.push(Object::Null)?;
+                    self.push(local_val)?;
                 }
-                Opcode::OpGetLocal => todo!(),
-                Opcode::OpSetLocal => todo!(),
+                Opcode::OpSetLocal => {
+                    let local_index = read_u8(&ins[ip + 1]);
+                    current_frame.ip += 1;
+
+                    let value = self.pop()?;
+                    let mut stack = self.stack.borrow_mut();
+                    // take the value off stack and insert in reserved slot
+                    stack[current_frame.base_pointer + local_index as usize] = value;
+                }
             }
         }
 
@@ -431,7 +445,12 @@ impl VM {
             return Err(MonkeyError::EmptyStackException);
         }
 
-        let obj = &stack[*sp - 1];
+        let obj = if *sp >= stack.len() {
+            &stack[stack.len() - 1]
+        } else {
+            &stack[*sp - 1]
+        };
+
         *sp -= 1;
 
         Ok(obj.clone())

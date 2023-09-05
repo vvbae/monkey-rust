@@ -206,9 +206,10 @@ impl Compiler {
             self.emit(Opcode::OpReturn, None);
         }
 
+        let num_locals = self.symbol_table.borrow().num_defs;
         let ins = self.leave_scope();
 
-        let compiled_fn = Object::CompiledFn(ins, 0, 0);
+        let compiled_fn = Object::CompiledFn(ins, num_locals, 0);
         let const_index = self.register_constant(&compiled_fn) as u16;
         self.emit(Opcode::OpConstant, Some(vec![const_index]));
     }

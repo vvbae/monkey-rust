@@ -18,7 +18,7 @@ pub enum Object {
     Builtin(String, usize, BuiltinFunction),
     Null,
     ReturnValue(Box<Object>),
-    CompiledFn(Instructions, u8, u8),
+    CompiledFn(Instructions, u16, u8),
     Error(String),
 }
 
