@@ -251,9 +251,9 @@ fn test_global_let_stmts() {
             ],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
                 make(Opcode::OpConstant, Some(vec![1])),
-                make(Opcode::OpSetGlobal, Some(vec![1])),
+                make(Opcode::OpSetGlobal, Some(vec![7])),
             ],
         },
         TestCase {
@@ -261,8 +261,8 @@ fn test_global_let_stmts() {
             expected_constants: vec![Constant::Object(Object::Integer(1))],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
-                make(Opcode::OpGetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
+                make(Opcode::OpGetGlobal, Some(vec![6])),
                 make(Opcode::OpPop, None),
             ],
         },
@@ -271,10 +271,10 @@ fn test_global_let_stmts() {
             expected_constants: vec![],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
-                make(Opcode::OpGetGlobal, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![1])),
-                make(Opcode::OpGetGlobal, Some(vec![1])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
+                make(Opcode::OpGetGlobal, Some(vec![6])),
+                make(Opcode::OpSetGlobal, Some(vec![7])),
+                make(Opcode::OpGetGlobal, Some(vec![7])),
                 make(Opcode::OpPop, None),
             ],
         },
@@ -577,8 +577,8 @@ fn test_function_calls() {
             ],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![1])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
-                make(Opcode::OpGetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
+                make(Opcode::OpGetGlobal, Some(vec![6])),
                 make(Opcode::OpCall, Some(vec![0])),
                 make(Opcode::OpPop, None),
             ],
@@ -591,8 +591,8 @@ fn test_function_calls() {
             ],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
-                make(Opcode::OpGetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
+                make(Opcode::OpGetGlobal, Some(vec![6])),
                 make(Opcode::OpConstant, Some(vec![1])),
                 make(Opcode::OpCall, Some(vec![1])),
                 make(Opcode::OpPop, None),
@@ -608,8 +608,8 @@ fn test_function_calls() {
             ],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
-                make(Opcode::OpGetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
+                make(Opcode::OpGetGlobal, Some(vec![6])),
                 make(Opcode::OpConstant, Some(vec![1])),
                 make(Opcode::OpConstant, Some(vec![2])),
                 make(Opcode::OpConstant, Some(vec![3])),
@@ -628,8 +628,8 @@ fn test_function_calls() {
             ],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
-                make(Opcode::OpGetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
+                make(Opcode::OpGetGlobal, Some(vec![6])),
                 make(Opcode::OpConstant, Some(vec![1])),
                 make(Opcode::OpCall, Some(vec![1])),
                 make(Opcode::OpPop, None),
@@ -652,8 +652,8 @@ fn test_function_calls() {
             ],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
-                make(Opcode::OpGetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
+                make(Opcode::OpGetGlobal, Some(vec![6])),
                 make(Opcode::OpConstant, Some(vec![1])),
                 make(Opcode::OpConstant, Some(vec![2])),
                 make(Opcode::OpConstant, Some(vec![3])),
@@ -708,13 +708,13 @@ fn test_let_stmt_scopes() {
             expected_constants: vec![
                 Constant::Object(Object::Integer(55)),
                 Constant::Instructions(vec![
-                    make(Opcode::OpGetGlobal, Some(vec![0])),
+                    make(Opcode::OpGetGlobal, Some(vec![6])),
                     make(Opcode::OpReturnValue, None),
                 ]),
             ],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![0])),
-                make(Opcode::OpSetGlobal, Some(vec![0])),
+                make(Opcode::OpSetGlobal, Some(vec![6])),
                 make(Opcode::OpConstant, Some(vec![1])),
                 make(Opcode::OpPop, None),
             ],
@@ -762,6 +762,42 @@ fn test_let_stmt_scopes() {
             ],
             expected_instructions: vec![
                 make(Opcode::OpConstant, Some(vec![2])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_builtins() {
+    let tests = vec![
+        TestCase {
+            input: "len([]); push([], 1);".to_string(),
+            expected_constants: vec![Constant::Object(Object::Integer(1))],
+            expected_instructions: vec![
+                make(Opcode::OpGetBuiltin, Some(vec![1])),
+                make(Opcode::OpArray, Some(vec![0])),
+                make(Opcode::OpCall, Some(vec![1])),
+                make(Opcode::OpPop, None),
+                make(Opcode::OpGetBuiltin, Some(vec![5])),
+                make(Opcode::OpArray, Some(vec![0])),
+                make(Opcode::OpConstant, Some(vec![0])),
+                make(Opcode::OpCall, Some(vec![2])),
+                make(Opcode::OpPop, None),
+            ],
+        },
+        TestCase {
+            input: "fn() { len([]) }".to_string(),
+            expected_constants: vec![Constant::Instructions(vec![
+                make(Opcode::OpGetBuiltin, Some(vec![1])),
+                make(Opcode::OpArray, Some(vec![0])),
+                make(Opcode::OpCall, Some(vec![1])),
+                make(Opcode::OpReturnValue, None),
+            ])],
+            expected_instructions: vec![
+                make(Opcode::OpConstant, Some(vec![0])),
                 make(Opcode::OpPop, None),
             ],
         },

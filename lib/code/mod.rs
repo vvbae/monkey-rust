@@ -2,7 +2,6 @@ use byteorder::{BigEndian, ByteOrder};
 
 pub type Instructions = Vec<u8>;
 
-// FIXME I dont know why result is not working here because of lifetime issue.
 pub fn make(op: Opcode, operands: Option<Vec<u16>>) -> Instructions {
     let widths = op.look_up();
     let operands = operands.unwrap_or(vec![]);
@@ -120,6 +119,7 @@ pub enum Opcode {
     OpReturn,
     OpGetLocal,
     OpSetLocal,
+    OpGetBuiltin,
 }
 
 impl Opcode {
@@ -152,6 +152,7 @@ impl Opcode {
             Opcode::OpReturn => vec![],
             Opcode::OpGetLocal => vec![1],
             Opcode::OpSetLocal => vec![1],
+            Opcode::OpGetBuiltin => vec![1],
         }
     }
 
@@ -184,6 +185,7 @@ impl Opcode {
             Opcode::OpReturn => 23,
             Opcode::OpGetLocal => 24,
             Opcode::OpSetLocal => 25,
+            Opcode::OpGetBuiltin => 26,
         }
     }
 }
@@ -217,6 +219,7 @@ impl From<&u8> for Opcode {
             23 => Opcode::OpReturn,
             24 => Opcode::OpGetLocal,
             25 => Opcode::OpSetLocal,
+            26 => Opcode::OpGetBuiltin,
             _ => todo!(),
         }
     }
@@ -251,6 +254,7 @@ impl Into<String> for Opcode {
             Opcode::OpReturn => "OpReturn",
             Opcode::OpGetLocal => "OpGetLocal",
             Opcode::OpSetLocal => "OpSetLocal",
+            Opcode::OpGetBuiltin => "OpGetBuiltin",
         }
         .to_string()
     }

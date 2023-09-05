@@ -4,6 +4,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 pub enum SymbolScope {
     GLOBAL,
     LOCAL,
+    BUILTIN,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -53,6 +54,19 @@ impl SymbolTable {
             name: name.clone(),
             scope,
             index: self.num_defs,
+        };
+
+        self.store.insert(name, symbol.clone());
+        self.num_defs += 1;
+
+        symbol
+    }
+
+    pub fn define_builtin(&mut self, index: usize, name: String) -> Symbol {
+        let symbol = Symbol {
+            name: name.clone(),
+            scope: SymbolScope::BUILTIN,
+            index: index as u16,
         };
 
         self.store.insert(name, symbol.clone());
@@ -191,6 +205,31 @@ mod symbol_table_test {
         for symbol in second_expected {
             let s = second_local.resolve(symbol.name.to_string()).unwrap();
             assert_eq!(symbol, s.clone());
+        }
+    }
+
+    #[test]
+    fn test_define_resolve_builtins() {
+        let mut global = SymbolTable::new();
+        let first_local = SymbolTable::new_enclosed(Rc::new(RefCell::new(global.clone())));
+        let second_local = SymbolTable::new_enclosed(Rc::new(RefCell::new(first_local.clone())));
+
+        let expected = vec![
+            Symbol::new("a".to_string(), SymbolScope::GLOBAL, 0),
+            Symbol::new("c".to_string(), SymbolScope::GLOBAL, 1),
+            Symbol::new("e".to_string(), SymbolScope::LOCAL, 2),
+            Symbol::new("f".to_string(), SymbolScope::LOCAL, 3),
+        ];
+
+        for (i, symbol) in expected.clone().iter().enumerate() {
+            global.define_builtin(i, symbol.name.clone());
+        }
+
+        for table in vec![global, first_local, second_local] {
+            for s in expected.clone() {
+                let actual = table.resolve(s.name.clone()).unwrap();
+                assert_eq!(s, actual);
+            }
         }
     }
 }

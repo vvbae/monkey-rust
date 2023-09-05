@@ -150,36 +150,6 @@ impl VM {
                     current_frame.ip += 1;
 
                     current_frame = self.call_func(num_args, current_frame.clone());
-
-                    // let stack = self.stack.borrow();
-                    // let mut sp = self.sp.borrow_mut();
-
-                    // let func = stack[*sp - 1 - num_args as usize].clone();
-                    // let frame = Frame::new(func.clone(), *sp - num_args);
-                    // let base_pointer = frame.base_pointer;
-
-                    // // push frame
-                    // let mut frames = self.frames.borrow_mut();
-                    // let mut frame_index = self.frame_index.borrow_mut();
-
-                    // if *frame_index >= frames.len() {
-                    //     frames.push(frame);
-                    // } else {
-                    //     frames[*frame_index] = frame;
-                    // }
-                    // *frame_index += 1;
-
-                    // // starting point is base_pointer, and reserve for locals
-                    // if let Object::CompiledFn(_, num_locals, _) = func {
-                    //     *sp = base_pointer + num_locals as usize
-                    // }
-
-                    // // update current frame, and sync it to the frames vec
-                    // let mut curr_frame_index = self.curr_frame_index.borrow_mut();
-                    // frames[*curr_frame_index] = current_frame.clone();
-
-                    // current_frame = frames[*curr_frame_index + 1].clone();
-                    // *curr_frame_index += 1;
                 }
                 Opcode::OpReturnValue | Opcode::OpReturn => {
                     let return_val = match op {
@@ -230,6 +200,7 @@ impl VM {
                     let index = current_frame.base_pointer + local_index as usize;
                     stack[index] = value;
                 }
+                Opcode::OpGetBuiltin => todo!(),
             }
         }
 

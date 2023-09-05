@@ -14,6 +14,17 @@ impl BuiltinsFunctions {
         BuiltinsFunctions {}
     }
 
+    pub fn get_builtin_names() -> Vec<String> {
+        vec![
+            "print".to_string(),
+            "len".to_string(),
+            "head".to_string(),
+            "tail".to_string(),
+            "cons".to_string(),
+            "push".to_string(),
+        ]
+    }
+
     pub fn get_builtins(&self) -> Vec<(Ident, Object)> {
         vec![
             add_builtin("print", 1, bprint_fn),
@@ -21,6 +32,7 @@ impl BuiltinsFunctions {
             add_builtin("head", 1, bhead_fn),
             add_builtin("tail", 1, btail_fn),
             add_builtin("cons", 2, bcons_fn),
+            add_builtin("push", 2, bpush_fn),
         ]
     }
 }
@@ -83,5 +95,16 @@ fn bcons_fn(args: Vec<Object>) -> Result<Object, String> {
             Ok(Object::Array(os))
         }
         _ => Err(String::from("invalid arguments for cons")),
+    }
+}
+
+fn bpush_fn(args: Vec<Object>) -> Result<Object, String> {
+    let mut args = args.into_iter();
+    match (args.next(), args.next()) {
+        (Some(o), Some(Object::Array(mut os))) => {
+            os.push(o);
+            Ok(Object::Array(os))
+        }
+        _ => Err(String::from("invalid arguments for push")),
     }
 }

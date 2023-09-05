@@ -2,11 +2,14 @@ use std::{cell::RefCell, rc::Rc, vec};
 
 use crate::{
     code::{make, Instructions, Opcode},
-    evaluator::object::Object,
+    evaluator::{
+        builtins::BuiltinsFunctions,
+        object::{BuiltinFunction, Object},
+    },
     parser::ast::{Expr, Ident, Infix, Literal, Prefix, Program, Stmt},
 };
 
-use self::symbol_table::{SymbolScope, SymbolTable};
+use self::symbol_table::{Symbol, SymbolScope, SymbolTable};
 
 pub struct CompilationScope {
     instructions: Instructions,
@@ -29,9 +32,14 @@ impl Compiler {
             prev_ins: None,
         };
 
+        let mut symbol_table = SymbolTable::new();
+        for (i, name) in BuiltinsFunctions::get_builtin_names().iter().enumerate() {
+            symbol_table.define_builtin(i, name.to_owned());
+        }
+
         Self {
             constants: Vec::new(),
-            symbol_table: Rc::new(RefCell::new(SymbolTable::new())),
+            symbol_table: Rc::new(RefCell::new(symbol_table)),
             scopes: vec![main_scope],
             scope_index: 0,
         }
@@ -55,6 +63,7 @@ impl Compiler {
                 match symbol.scope {
                     SymbolScope::GLOBAL => self.emit(Opcode::OpSetGlobal, Some(vec![symbol.index])),
                     SymbolScope::LOCAL => self.emit(Opcode::OpSetLocal, Some(vec![symbol.index])),
+                    _ => unimplemented!(),
                 };
             }
             Stmt::ReturnStmt(expr) => {
@@ -88,10 +97,7 @@ impl Compiler {
 
     pub fn compile_ident(&mut self, ident: Ident) {
         let symbol = self.symbol_table.borrow().resolve(ident.0).unwrap();
-        match symbol.scope {
-            SymbolScope::GLOBAL => self.emit(Opcode::OpGetGlobal, Some(vec![symbol.index])),
-            SymbolScope::LOCAL => self.emit(Opcode::OpGetLocal, Some(vec![symbol.index])),
-        };
+        self.load_symbol(symbol);
     }
 
     pub fn compile_literal(&mut self, lit: Literal) {
@@ -255,6 +261,14 @@ impl Compiler {
         self.compile_expr(array);
         self.compile_expr(index);
         self.emit(Opcode::OpIndex, None);
+    }
+
+    fn load_symbol(&mut self, symbol: Symbol) {
+        match symbol.scope {
+            SymbolScope::GLOBAL => self.emit(Opcode::OpGetGlobal, Some(vec![symbol.index])),
+            SymbolScope::LOCAL => self.emit(Opcode::OpGetLocal, Some(vec![symbol.index])),
+            SymbolScope::BUILTIN => self.emit(Opcode::OpGetBuiltin, Some(vec![symbol.index])),
+        };
     }
 
     /// Append obj to constants, return its index as identifier for the OpConstant instruction
