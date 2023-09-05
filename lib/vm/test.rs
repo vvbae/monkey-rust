@@ -285,6 +285,61 @@ fn test_call_fn_with_bindings() {
     run_tests(tests);
 }
 
+#[test]
+fn test_call_fn_with_args_and_bindings() {
+    let tests = vec![
+        make_testcase(
+            "let identity = fn(a) { a; };
+            identity(4);",
+            Object::Integer(4),
+        ),
+        make_testcase(
+            "let sum = fn(a, b) { a + b; };
+            sum(1, 2);",
+            Object::Integer(3),
+        ),
+        make_testcase(
+            "let sum = fn(a, b) {
+                let c = a + b;
+                c;
+            };
+            sum(1, 2);",
+            Object::Integer(3),
+        ),
+        make_testcase(
+            "let sum = fn(a, b) {
+                    let c = a + b;
+        c; };
+                sum(1, 2) + sum(3, 4);",
+            Object::Integer(10),
+        ),
+        make_testcase(
+            " let sum = fn(a, b) {
+                    let c = a + b;
+                    c; };
+                            let outer = fn() {
+                                sum(1, 2) + sum(3, 4);
+                            };
+                            outer();",
+            Object::Integer(10),
+        ),
+        make_testcase(
+            "let globalNum = 10;
+                let sum = fn(a, b) {
+                    let c = a + b;
+                    c + globalNum;
+        };
+                let outer = fn() {
+                    sum(1, 2) + sum(3, 4) + globalNum;
+        };
+                outer() + globalNum;",
+            Object::Integer(50),
+        ),
+    ];
+
+    run_tests(tests);
+}
+
 fn test_int_obj(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => {
@@ -352,7 +407,6 @@ fn test_expected(expected: Object, actual: &Object) {
             assert_eq!(arr, result);
         }
         Object::Hash(hashmap) => {
-            println!("{:?}", hashmap);
             let expected_pairs = hashmap.into_iter().collect::<Vec<_>>();
             match actual {
                 Object::Hash(map) => {

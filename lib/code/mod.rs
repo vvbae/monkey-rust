@@ -147,7 +147,7 @@ impl Opcode {
             Opcode::OpArray => vec![2],
             Opcode::OpHash => vec![2],
             Opcode::OpIndex => vec![],
-            Opcode::OpCall => vec![],
+            Opcode::OpCall => vec![1],
             Opcode::OpReturnValue => vec![],
             Opcode::OpReturn => vec![],
             Opcode::OpGetLocal => vec![1],

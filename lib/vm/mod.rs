@@ -44,7 +44,7 @@ impl VM {
 
         Self {
             constants: bytecode.constants,
-            stack: RefCell::new(Vec::with_capacity(STACK_SIZE)),
+            stack: RefCell::new(vec![Object::Null; STACK_SIZE]),
             sp: RefCell::new(0),
             globals: RefCell::new(Vec::with_capacity(GLOBAL_SIZE)),
             frames: RefCell::new(frames),
@@ -63,7 +63,6 @@ impl VM {
             let ip = current_frame.ip as usize;
             let ins = current_frame.instructions();
             let op = Opcode::from(&ins[ip as usize]);
-
             match op {
                 Opcode::OpConstant => {
                     let const_index = read_u16(&ins[ip + 1..ip + 3]);
@@ -151,35 +150,40 @@ impl VM {
                     self.execute_index_expr(&left, &index)?;
                 }
                 Opcode::OpCall => {
-                    let stack = self.stack.borrow();
-                    let mut sp = self.sp.borrow_mut();
+                    let num_args = read_u8(&ins[ip + 1]) as usize;
+                    current_frame.ip += 1;
 
-                    let func = stack[*sp - 1].clone();
-                    let frame = Frame::new(func.clone(), *sp);
-                    let base_pointer = frame.base_pointer;
+                    current_frame = self.call_func(num_args, current_frame.clone());
 
-                    // push frame
-                    let mut frames = self.frames.borrow_mut();
-                    let mut frame_index = self.frame_index.borrow_mut();
+                    // let stack = self.stack.borrow();
+                    // let mut sp = self.sp.borrow_mut();
 
-                    if *frame_index >= frames.len() {
-                        frames.push(frame);
-                    } else {
-                        frames[*frame_index] = frame;
-                    }
-                    *frame_index += 1;
+                    // let func = stack[*sp - 1 - num_args as usize].clone();
+                    // let frame = Frame::new(func.clone(), *sp - num_args);
+                    // let base_pointer = frame.base_pointer;
 
-                    // starting point is base_pointer, and reserve for locals
-                    if let Object::CompiledFn(_, num_locals, _) = func {
-                        *sp = base_pointer + num_locals as usize
-                    }
+                    // // push frame
+                    // let mut frames = self.frames.borrow_mut();
+                    // let mut frame_index = self.frame_index.borrow_mut();
 
-                    // update current frame, and sync it to the frames vec
-                    let mut curr_frame_index = self.curr_frame_index.borrow_mut();
-                    frames[*curr_frame_index] = current_frame.clone();
+                    // if *frame_index >= frames.len() {
+                    //     frames.push(frame);
+                    // } else {
+                    //     frames[*frame_index] = frame;
+                    // }
+                    // *frame_index += 1;
 
-                    current_frame = frames[*curr_frame_index + 1].clone();
-                    *curr_frame_index += 1;
+                    // // starting point is base_pointer, and reserve for locals
+                    // if let Object::CompiledFn(_, num_locals, _) = func {
+                    //     *sp = base_pointer + num_locals as usize
+                    // }
+
+                    // // update current frame, and sync it to the frames vec
+                    // let mut curr_frame_index = self.curr_frame_index.borrow_mut();
+                    // frames[*curr_frame_index] = current_frame.clone();
+
+                    // current_frame = frames[*curr_frame_index + 1].clone();
+                    // *curr_frame_index += 1;
                 }
                 Opcode::OpReturnValue | Opcode::OpReturn => {
                     let return_val = match op {
@@ -217,7 +221,6 @@ impl VM {
                         let stack = self.stack.borrow();
                         stack[current_frame.base_pointer + local_index as usize].clone()
                     };
-
                     self.push(local_val)?;
                 }
                 Opcode::OpSetLocal => {
@@ -227,12 +230,47 @@ impl VM {
                     let value = self.pop()?;
                     let mut stack = self.stack.borrow_mut();
                     // take the value off stack and insert in reserved slot
-                    stack[current_frame.base_pointer + local_index as usize] = value;
+
+                    let index = current_frame.base_pointer + local_index as usize;
+                    stack[index] = value;
                 }
             }
         }
 
         Ok(())
+    }
+
+    fn call_func(&self, num_args: usize, curr_frame: Frame) -> Frame {
+        let stack = self.stack.borrow();
+        let mut sp = self.sp.borrow_mut();
+
+        let func = stack[*sp - 1 - num_args].clone();
+        let frame = Frame::new(func.clone(), *sp - num_args);
+        let base_pointer = frame.base_pointer;
+        // push frame
+        let mut frames = self.frames.borrow_mut();
+        let mut frame_index = self.frame_index.borrow_mut();
+
+        if *frame_index >= frames.len() {
+            frames.push(frame);
+        } else {
+            frames[*frame_index] = frame;
+        }
+        *frame_index += 1;
+
+        // starting point is base_pointer, and reserve for locals
+        if let Object::CompiledFn(_, num_locals, _) = func {
+            *sp = base_pointer + num_locals as usize;
+        }
+
+        // update current frame, and sync it to the frames vec
+        let mut curr_frame_index = self.curr_frame_index.borrow_mut();
+        frames[*curr_frame_index] = curr_frame;
+
+        // current_frame = frames[*curr_frame_index + 1].clone();
+        *curr_frame_index += 1;
+
+        frames[*curr_frame_index].clone()
     }
 
     fn build_array(&self, start_index: usize, end_index: usize) -> Object {
@@ -261,7 +299,6 @@ impl VM {
     fn execute_binary_operation(&self, op: Opcode) -> Result<()> {
         let right = self.pop()?;
         let left = self.pop()?;
-
         let res = match (left, right) {
             (Object::Integer(l), Object::Integer(r)) => self.execute_binary_int_operation(op, l, r),
             (Object::String(l), Object::String(r)) => {
@@ -425,11 +462,11 @@ impl VM {
         }
 
         // FIXME: maybe change declaration to fill capacity
-        if *sp >= stack.len() {
-            stack.push(obj);
-        } else {
-            stack[*sp] = obj;
-        }
+        // if *sp >= stack.len() {
+        //     stack.push(obj);
+        // } else {
+        stack[*sp] = obj;
+        // }
 
         *sp += 1;
 
@@ -445,11 +482,7 @@ impl VM {
             return Err(MonkeyError::EmptyStackException);
         }
 
-        let obj = if *sp >= stack.len() {
-            &stack[stack.len() - 1]
-        } else {
-            &stack[*sp - 1]
-        };
+        let obj = &stack[*sp - 1];
 
         *sp -= 1;
 

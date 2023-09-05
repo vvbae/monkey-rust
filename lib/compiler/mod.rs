@@ -52,7 +52,6 @@ impl Compiler {
             Stmt::LetStmt(ident, expr) => {
                 self.compile_expr(expr);
                 let symbol = self.symbol_table.borrow_mut().define(ident.0);
-
                 match symbol.scope {
                     SymbolScope::GLOBAL => self.emit(Opcode::OpSetGlobal, Some(vec![symbol.index])),
                     SymbolScope::LOCAL => self.emit(Opcode::OpSetLocal, Some(vec![symbol.index])),
@@ -194,6 +193,14 @@ impl Compiler {
     pub fn compile_fn(&mut self, params: Vec<Ident>, body: Vec<Stmt>) {
         self.enter_scope();
 
+        let num_params = params.len();
+        {
+            let mut symbol_table = self.symbol_table.borrow_mut();
+            for param in params {
+                symbol_table.define(param.0);
+            }
+        }
+
         for stmt in body {
             self.compile_statement(stmt);
         }
@@ -209,18 +216,19 @@ impl Compiler {
         let num_locals = self.symbol_table.borrow().num_defs;
         let ins = self.leave_scope();
 
-        let compiled_fn = Object::CompiledFn(ins, num_locals, 0);
+        let compiled_fn = Object::CompiledFn(ins, num_locals, num_params as u8);
         let const_index = self.register_constant(&compiled_fn) as u16;
         self.emit(Opcode::OpConstant, Some(vec![const_index]));
     }
 
     pub fn compile_call(&mut self, fn_exp: Expr, args: Vec<Expr>) {
         self.compile_expr(fn_exp);
+        let len = args.len();
         for arg in args {
             self.compile_expr(arg);
         }
 
-        self.emit(Opcode::OpCall, None);
+        self.emit(Opcode::OpCall, Some(vec![len as u16]));
     }
 
     pub fn compile_array(&mut self, exprs: Vec<Expr>) {
