@@ -340,6 +340,134 @@ fn test_call_fn_with_args_and_bindings() {
     run_tests(tests);
 }
 
+#[test]
+fn test_builtin_fns() {
+    let tests = vec![
+        make_testcase("len(\"\")", Object::Integer(0)),
+        make_testcase("len(\"four\")", Object::Integer(4)),
+        make_testcase("len(\"hello world\")", Object::Integer(11)),
+        make_testcase(
+            "len(1)",
+            Object::Error("invalid arguments for len".to_string()),
+        ),
+        make_testcase(
+            "len(\"one\", \"two\")",
+            Object::Error("invalid arguments for len".to_string()),
+        ),
+        make_testcase("len([1, 2, 3])", Object::Integer(3)),
+        make_testcase("len([])", Object::Integer(0)),
+        // make_testcase("print(\"hello\", \"world!\")", Object::Null),
+        // make_testcase("head([1, 2, 3])", Object::Integer(1)),
+        // make_testcase("head([])", Object::Null),
+        // make_testcase(
+        //     "head(1)",
+        //     Object::Error("invalid arguments for head".to_string()),
+        // ),
+        // make_testcase("tail([1, 2, 3])", Object::Integer(3)),
+        // make_testcase("tail([])", Object::Null),
+        // make_testcase(
+        //     "tail(1)",
+        //     Object::Error("invalid arguments for tail".to_string()),
+        // ),
+        // make_testcase("push([], 1)", Object::Array(vec![Object::Integer(1)])),
+        // make_testcase(
+        //     "push(1, 1)",
+        //     Object::Error("invalid arguments for push".to_string()),
+        // ),
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_closures() {
+    let tests = vec![
+        make_testcase(
+            "let newClosure = fn(a) {
+            fn() { a; };
+        };
+        let closure = newClosure(99);
+        closure();",
+            Object::Integer(99),
+        ),
+        make_testcase(
+            "let newAdder = fn(a, b) {
+                fn(c) { a + b + c };
+            };
+            let adder = newAdder(1, 2);
+            adder(8);",
+            Object::Integer(11),
+        ),
+        make_testcase(
+            "let newAdder = fn(a, b) {
+                let c = a + b;
+                fn(d) { c + d };
+            };
+            let adder = newAdder(1, 2);
+            adder(8);",
+            Object::Integer(11),
+        ),
+        make_testcase(
+            "let newAdderOuter = fn(a, b) {
+                let c = a + b;
+                fn(d) {
+                    let e = d + c;
+                    fn(f) { e + f; };
+                };
+            };
+            let newAdderInner = newAdderOuter(1, 2)
+            let adder = newAdderInner(3);
+            adder(8);",
+            Object::Integer(14),
+        ),
+        make_testcase(
+            "let a = 1;
+            let newAdderOuter = fn(b) {
+                fn(c) {
+                    fn(d) { a + b + c + d };
+    }; };
+            let newAdderInner = newAdderOuter(2)
+            let adder = newAdderInner(3);
+            adder(8);",
+            Object::Integer(14),
+        ),
+        make_testcase(
+            "let newClosure = fn(a, b) {
+                let one = fn() { a; };
+                let two = fn() { b; };
+                fn() { one() + two(); };
+            };
+            let closure = newClosure(9, 90);
+            closure();",
+            Object::Integer(99),
+        ),
+    ];
+
+    run_tests(tests);
+}
+
+#[test]
+fn test_recursive_fibonacci() {
+    let tests = vec![make_testcase(
+        "
+        let fibonacci = fn(x) {
+            if (x == 0) {
+                return 0;
+            } else {
+                if (x == 1) {
+                    return 1;
+                } else {
+                    fibonacci(x - 1) + fibonacci(x - 2);
+                } 
+            }
+        };
+        fibonacci(15);",
+        Object::Integer(610),
+    )];
+
+    run_tests(tests);
+}
+
 fn test_int_obj(expected: i64, actual: Object) {
     match actual {
         Object::Integer(v) => {
@@ -420,6 +548,14 @@ fn test_expected(expected: Object, actual: &Object) {
         Object::Null => match actual {
             Object::Null => {}
             _ => panic!("object is not Null: {:?} ({:?})", actual, actual),
+        },
+        Object::Error(msg) => match actual {
+            Object::Error(actual_msg) => {
+                assert_eq!(msg, actual_msg.to_string())
+            }
+            _ => {
+                println!("{:?}", actual);
+            }
         },
         _ => todo!(),
     }

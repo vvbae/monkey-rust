@@ -6,12 +6,14 @@ fn test_make() {
         (Opcode::OpConstant, vec![65534]),
         (Opcode::OpAdd, vec![]),
         (Opcode::OpGetLocal, vec![255]),
+        (Opcode::OpClosure, vec![65534, 255]),
     ];
 
     let expected: Vec<Vec<u8>> = vec![
         vec![Opcode::to_byte(Opcode::OpConstant), 255, 254],
         vec![Opcode::to_byte(Opcode::OpAdd)],
         vec![Opcode::to_byte(Opcode::OpGetLocal), 255],
+        vec![Opcode::to_byte(Opcode::OpClosure), 255, 254, 255],
     ];
 
     let results = tests
@@ -29,6 +31,7 @@ fn test_instructions() {
         make(Opcode::OpGetLocal, Some(vec![1])),
         make(Opcode::OpConstant, Some(vec![2])),
         make(Opcode::OpConstant, Some(vec![65535])),
+        make(Opcode::OpClosure, Some(vec![65535, 255])),
     ]
     .concat();
 
@@ -36,6 +39,7 @@ fn test_instructions() {
 0001 OpGetLocal 1
 0003 OpConstant 2
 0006 OpConstant 65535
+0009 OpClosure 65535 255
 ";
 
     assert_eq!(expected, string(instructions))
@@ -59,6 +63,11 @@ fn test_read_operands() {
             op: Opcode::OpGetLocal,
             operands: vec![255],
             bytes_read: 1,
+        },
+        TestCase {
+            op: Opcode::OpClosure,
+            operands: vec![65535, 255],
+            bytes_read: 3,
         },
     ];
 

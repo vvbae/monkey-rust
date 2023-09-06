@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     code::{read_u16, read_u8, Opcode},
@@ -6,7 +6,7 @@ use crate::{
     compiler::Bytecode,
     error::MonkeyError,
     error::Result,
-    evaluator::object::Object,
+    evaluator::{builtins::BuiltinsFunctions, object::Object},
 };
 
 use self::frame::Frame;
@@ -37,7 +37,8 @@ pub struct VM {
 impl VM {
     pub fn new(bytecode: Bytecode) -> Self {
         let main_fn = Object::CompiledFn(bytecode.instructions.clone(), 0, 0);
-        let main_frame = Frame::new(main_fn, 0);
+        let main_closure = Object::Closure(Rc::new(main_fn), Vec::new());
+        let main_frame = Frame::new(main_closure, 0);
 
         let mut frames = Vec::with_capacity(MAX_FRAMES);
         frames.push(main_frame.clone());
@@ -149,7 +150,7 @@ impl VM {
                     let num_args = read_u8(&ins[ip + 1]) as usize;
                     current_frame.ip += 1;
 
-                    current_frame = self.call_func(num_args, current_frame.clone());
+                    current_frame = self.execute_call(num_args, current_frame.clone());
                 }
                 Opcode::OpReturnValue | Opcode::OpReturn => {
                     let return_val = match op {
@@ -200,11 +201,120 @@ impl VM {
                     let index = current_frame.base_pointer + local_index as usize;
                     stack[index] = value;
                 }
-                Opcode::OpGetBuiltin => todo!(),
+                Opcode::OpGetBuiltin => {
+                    let builtin_index = read_u8(&ins[ip + 1]) as usize;
+                    current_frame.ip += 1;
+
+                    let (_, builtin_fn) = &BuiltinsFunctions.get_builtins()[builtin_index];
+                    self.push(builtin_fn.clone())?;
+                }
+                Opcode::OpClosure => {
+                    let fn_index = read_u16(&ins[ip + 1..ip + 3]) as usize;
+                    let num_free = read_u8(&ins[ip + 3]);
+                    current_frame.ip += 3;
+
+                    self.push_closure(fn_index, num_free as usize)?;
+                }
+                Opcode::OpGetFree => {
+                    let free_index = read_u8(&ins[ip + 1]) as usize;
+                    current_frame.ip += 1;
+
+                    let free = {
+                        if let Object::Closure(_, free) = current_frame.cl.clone() {
+                            free.clone()
+                        } else {
+                            vec![]
+                        }
+                    };
+
+                    self.push(free[free_index].clone())?;
+                }
             }
         }
 
         Ok(())
+    }
+
+    fn push_closure(&self, fn_index: usize, num_free: usize) -> Result<()> {
+        let closure = {
+            let func = self.constants[fn_index].clone();
+            let stack = self.stack.borrow();
+            let mut sp = self.sp.borrow_mut();
+
+            let mut frees = vec![Object::Null; num_free];
+            frees.clone_from_slice(&stack[*sp - num_free..*sp]);
+            *sp -= num_free;
+            Object::Closure(Rc::new(func), frees)
+        };
+        self.push(closure)?;
+
+        Ok(())
+    }
+
+    fn execute_call(&self, num_args: usize, curr_frame: Frame) -> Frame {
+        let (frame, obj) = {
+            let stack = self.stack.borrow();
+            let mut sp = self.sp.borrow_mut();
+            let callee = stack[*sp - 1 - num_args].clone();
+
+            match callee.clone() {
+                Object::Closure(_compiled_fn, _free_vars) => {
+                    let frame = Frame::new(callee.clone(), *sp - num_args);
+                    let base_pointer = frame.base_pointer;
+
+                    // push frame
+                    let mut frames = self.frames.borrow_mut();
+                    let mut frame_index = self.frame_index.borrow_mut();
+
+                    if *frame_index >= frames.len() {
+                        frames.push(frame);
+                    } else {
+                        frames[*frame_index] = frame;
+                    }
+                    *frame_index += 1;
+
+                    // starting point is base_pointer, and reserve for locals
+                    if let Object::Closure(func, _) = callee {
+                        if let Object::CompiledFn(_, num_locals, _) = Rc::as_ref(&func) {
+                            *sp = base_pointer + *num_locals as usize;
+                        }
+                    }
+
+                    // update current frame, and sync it to the frames vec
+                    let mut curr_frame_index = self.curr_frame_index.borrow_mut();
+                    frames[*curr_frame_index] = curr_frame;
+
+                    *curr_frame_index += 1;
+                    (frames[*curr_frame_index].clone(), None)
+                }
+                Object::Builtin(name, _arg, func) => {
+                    let args = {
+                        let mut vacant = vec![Object::Null; num_args];
+                        vacant.clone_from_slice(&stack[*sp - num_args..*sp]);
+                        vacant
+                    };
+
+                    let result = func(args);
+                    *sp = *sp - 1 - num_args;
+
+                    let obj = match result.clone() {
+                        Ok(builtin_ret) => builtin_ret,
+                        Err(_) => Object::Error(format!("invalid arguments for {}", name)),
+                    };
+
+                    (curr_frame, Some(obj))
+                }
+                _ => unimplemented!(),
+            }
+        };
+
+        match obj {
+            None => frame,
+            Some(ret) => {
+                let _ = self.push(ret);
+                frame
+            }
+        }
     }
 
     fn call_func(&self, num_args: usize, curr_frame: Frame) -> Frame {

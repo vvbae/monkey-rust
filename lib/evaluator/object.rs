@@ -19,6 +19,7 @@ pub enum Object {
     Null,
     ReturnValue(Box<Object>),
     CompiledFn(Instructions, u16, u8),
+    Closure(Rc<Object>, Vec<Object>),
     Error(String),
 }
 
@@ -79,6 +80,7 @@ impl fmt::Display for Object {
             Object::ReturnValue(ref o) => write!(f, "{}", *o),
             Object::Error(ref s) => write!(f, "Error: {}", s),
             Object::CompiledFn(_, _, _) => write!(f, "[compiled function]"),
+            Object::Closure(_, _) => write!(f, "[closure]"),
         }
     }
 }

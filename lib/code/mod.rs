@@ -59,6 +59,7 @@ fn fmt_ins(op: Opcode, widths: &[u8], operands: Vec<u16>) -> String {
     match operand_cnt {
         0 => format!("{}", opcode_str),
         1 => format!("{} {}", opcode_str, operands[0]),
+        2 => format!("{} {} {}", opcode_str, operands[0], operands[1]),
         _ => format!("ERROR: unhandled operandCount for {}\n", opcode_str),
     }
 }
@@ -120,6 +121,8 @@ pub enum Opcode {
     OpGetLocal,
     OpSetLocal,
     OpGetBuiltin,
+    OpClosure,
+    OpGetFree,
 }
 
 impl Opcode {
@@ -153,6 +156,8 @@ impl Opcode {
             Opcode::OpGetLocal => vec![1],
             Opcode::OpSetLocal => vec![1],
             Opcode::OpGetBuiltin => vec![1],
+            Opcode::OpClosure => vec![2, 1],
+            Opcode::OpGetFree => vec![1],
         }
     }
 
@@ -186,6 +191,8 @@ impl Opcode {
             Opcode::OpGetLocal => 24,
             Opcode::OpSetLocal => 25,
             Opcode::OpGetBuiltin => 26,
+            Opcode::OpClosure => 27,
+            Opcode::OpGetFree => 28,
         }
     }
 }
@@ -220,6 +227,8 @@ impl From<&u8> for Opcode {
             24 => Opcode::OpGetLocal,
             25 => Opcode::OpSetLocal,
             26 => Opcode::OpGetBuiltin,
+            27 => Opcode::OpClosure,
+            28 => Opcode::OpGetFree,
             _ => todo!(),
         }
     }
@@ -255,6 +264,8 @@ impl Into<String> for Opcode {
             Opcode::OpGetLocal => "OpGetLocal",
             Opcode::OpSetLocal => "OpSetLocal",
             Opcode::OpGetBuiltin => "OpGetBuiltin",
+            Opcode::OpClosure => "OpClosure",
+            Opcode::OpGetFree => "OpGetFree",
         }
         .to_string()
     }

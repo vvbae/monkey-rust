@@ -2,10 +2,7 @@ use std::{cell::RefCell, rc::Rc, vec};
 
 use crate::{
     code::{make, Instructions, Opcode},
-    evaluator::{
-        builtins::BuiltinsFunctions,
-        object::{BuiltinFunction, Object},
-    },
+    evaluator::{builtins::BuiltinsFunctions, object::Object},
     parser::ast::{Expr, Ident, Infix, Literal, Prefix, Program, Stmt},
 };
 
@@ -58,8 +55,8 @@ impl Compiler {
                 self.emit(Opcode::OpPop, None);
             }
             Stmt::LetStmt(ident, expr) => {
-                self.compile_expr(expr);
                 let symbol = self.symbol_table.borrow_mut().define(ident.0);
+                self.compile_expr(expr);
                 match symbol.scope {
                     SymbolScope::GLOBAL => self.emit(Opcode::OpSetGlobal, Some(vec![symbol.index])),
                     SymbolScope::LOCAL => self.emit(Opcode::OpSetLocal, Some(vec![symbol.index])),
@@ -96,7 +93,7 @@ impl Compiler {
     }
 
     pub fn compile_ident(&mut self, ident: Ident) {
-        let symbol = self.symbol_table.borrow().resolve(ident.0).unwrap();
+        let symbol = self.symbol_table.borrow_mut().resolve(ident.0).unwrap();
         self.load_symbol(symbol);
     }
 
@@ -219,12 +216,23 @@ impl Compiler {
             self.emit(Opcode::OpReturn, None);
         }
 
-        let num_locals = self.symbol_table.borrow().num_defs;
+        let (free_symbols, num_locals) = {
+            let symbol_table = self.symbol_table.borrow();
+            (symbol_table.free_symbols.clone(), symbol_table.num_defs)
+        };
+
         let ins = self.leave_scope();
 
+        for s in &free_symbols {
+            self.load_symbol(s.clone());
+        }
+
         let compiled_fn = Object::CompiledFn(ins, num_locals, num_params as u8);
-        let const_index = self.register_constant(&compiled_fn) as u16;
-        self.emit(Opcode::OpConstant, Some(vec![const_index]));
+        let fn_index = self.register_constant(&compiled_fn) as u16;
+        self.emit(
+            Opcode::OpClosure,
+            Some(vec![fn_index, free_symbols.len() as u16]),
+        );
     }
 
     pub fn compile_call(&mut self, fn_exp: Expr, args: Vec<Expr>) {
@@ -268,6 +276,7 @@ impl Compiler {
             SymbolScope::GLOBAL => self.emit(Opcode::OpGetGlobal, Some(vec![symbol.index])),
             SymbolScope::LOCAL => self.emit(Opcode::OpGetLocal, Some(vec![symbol.index])),
             SymbolScope::BUILTIN => self.emit(Opcode::OpGetBuiltin, Some(vec![symbol.index])),
+            SymbolScope::FREE => self.emit(Opcode::OpGetFree, Some(vec![symbol.index])),
         };
     }
 
