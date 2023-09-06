@@ -317,39 +317,6 @@ impl VM {
         }
     }
 
-    fn call_func(&self, num_args: usize, curr_frame: Frame) -> Frame {
-        let stack = self.stack.borrow();
-        let mut sp = self.sp.borrow_mut();
-
-        let func = stack[*sp - 1 - num_args].clone();
-        let frame = Frame::new(func.clone(), *sp - num_args);
-        let base_pointer = frame.base_pointer;
-        // push frame
-        let mut frames = self.frames.borrow_mut();
-        let mut frame_index = self.frame_index.borrow_mut();
-
-        if *frame_index >= frames.len() {
-            frames.push(frame);
-        } else {
-            frames[*frame_index] = frame;
-        }
-        *frame_index += 1;
-
-        // starting point is base_pointer, and reserve for locals
-        if let Object::CompiledFn(_, num_locals, _) = func {
-            *sp = base_pointer + num_locals as usize;
-        }
-
-        // update current frame, and sync it to the frames vec
-        let mut curr_frame_index = self.curr_frame_index.borrow_mut();
-        frames[*curr_frame_index] = curr_frame;
-
-        // current_frame = frames[*curr_frame_index + 1].clone();
-        *curr_frame_index += 1;
-
-        frames[*curr_frame_index].clone()
-    }
-
     fn build_array(&self, start_index: usize, end_index: usize) -> Object {
         let stack = self.stack.borrow();
         let mut eles = Vec::with_capacity(end_index - start_index);
